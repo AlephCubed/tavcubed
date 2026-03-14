@@ -1,4 +1,4 @@
-use crate::chunk::{DirtyFlag, VoxelBuffer};
+use crate::chunk::VoxelBuffer;
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::PrimitiveTopology;
 use bevy::prelude::*;
@@ -12,7 +12,7 @@ impl Plugin for ChunkMeshPlugin {
         let (sender, receiver) = crossbeam_channel::unbounded();
         app.insert_resource(ChunkMeshChannel { sender, receiver });
 
-        app.add_systems(Update, (mesh_dirty_chunks, mesh_finished).chain());
+        app.add_systems(Update, (mesh_changed_chunks, mesh_finished).chain());
     }
 }
 
@@ -30,16 +30,16 @@ struct ChunkMeshFinished {
     mesh: Mesh,
 }
 
-fn mesh_dirty_chunks(
+fn mesh_changed_chunks(
     channel: Res<ChunkMeshChannel>,
-    chunks: Query<(Entity, &VoxelBuffer), With<DirtyFlag>>,
+    chunks: Query<(Entity, &VoxelBuffer), Changed<VoxelBuffer>>,
 ) {
     let pool = AsyncComputeTaskPool::get();
 
     for (chunk, buffer) in &chunks {
         let sender = channel.sender.clone();
 
-        info!("Meshing {chunk}");
+        debug!("Meshing {chunk}");
 
         pool.spawn(async move {
             #[rustfmt::skip]
@@ -74,10 +74,9 @@ fn mesh_dirty_chunks(
 }
 
 fn mesh_finished(
-    mut commands: Commands,
     channel: Res<ChunkMeshChannel>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut chunk_meshes: Query<&mut ChunkMesh, With<DirtyFlag>>,
+    mut chunk_meshes: Query<&mut ChunkMesh>,
 ) {
     for msg in channel.receiver.try_iter() {
         let Ok(mut mesh) = chunk_meshes.get_mut(msg.chunk) else {
@@ -85,8 +84,8 @@ fn mesh_finished(
             continue;
         };
 
-        mesh.0 = meshes.add(msg.mesh);
+        debug!("Finished meshing {}", msg.chunk);
 
-        commands.entity(msg.chunk).remove::<DirtyFlag>();
+        mesh.0 = meshes.add(msg.mesh);
     }
 }

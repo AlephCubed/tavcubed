@@ -10,15 +10,13 @@ pub struct ChunkPos {
     pub y: u32,
 }
 
+const CHUNK_VOXEL_COUNT: usize = 32 ^ 3;
+
 #[derive(Component, Debug)]
-pub struct VoxelBuffer(pub [Option<Voxel>; 1024]);
+pub struct VoxelBuffer(pub [Option<Voxel>; CHUNK_VOXEL_COUNT]);
 
 impl Default for VoxelBuffer {
     fn default() -> Self {
-        Self([None; 1024])
+        Self([None; CHUNK_VOXEL_COUNT])
     }
 }
-
-#[derive(Component, Default, Debug)]
-#[component(storage = "SparseSet")]
-pub struct DirtyFlag;
