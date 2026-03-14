@@ -74,8 +74,10 @@ fn mesh_changed_chunks(
 }
 
 fn mesh_finished(
+    mut commands: Commands,
     channel: Res<ChunkMeshChannel>,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
     mut chunk_meshes: Query<&mut ChunkMesh>,
 ) {
     for msg in channel.receiver.try_iter() {
@@ -86,6 +88,11 @@ fn mesh_finished(
 
         debug!("Finished meshing {}", msg.chunk);
 
-        mesh.0 = meshes.add(msg.mesh);
+        let handle = meshes.add(msg.mesh);
+        mesh.0 = handle.clone();
+        commands.entity(msg.chunk).insert((
+            Mesh3d(handle),
+            MeshMaterial3d(materials.add(StandardMaterial::default())),
+        ));
     }
 }
