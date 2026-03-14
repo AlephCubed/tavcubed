@@ -2,7 +2,7 @@ use std::num::NonZeroU8;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Voxel {
-    id: NonZeroU8,
+    pub id: NonZeroU8,
 }
 
 impl Default for Voxel {

@@ -1,4 +1,4 @@
-use crate::chunk::VoxelBuffer;
+use crate::chunk::{VoxelBuffer, CHUNK_VOXEL_COUNT};
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::PrimitiveTopology;
 use bevy::prelude::*;
@@ -41,31 +41,26 @@ fn mesh_changed_chunks(
 
         debug!("Meshing {chunk}");
 
+        let buffer = buffer.0.clone();
+
         pool.spawn(async move {
-            #[rustfmt::skip]
+            let mut positions = Vec::with_capacity(CHUNK_VOXEL_COUNT / 2);
+
+            for (index, _voxel) in buffer
+                .iter()
+                .enumerate()
+                .filter_map(|(i, v)| v.map(|v| (i, v)))
+            {
+                let pos = VoxelBuffer::index_to_pos(index);
+
+                positions.extend_from_slice(&cube(pos.x as f32, pos.y as f32, pos.z as f32));
+            }
+
             let mesh = Mesh::new(
                 PrimitiveTopology::TriangleStrip,
                 RenderAssetUsages::default(),
             )
-            .with_inserted_attribute(
-                Mesh::ATTRIBUTE_POSITION,
-                vec![ // Taken from: https://stackoverflow.com/a/46016469
-                    [-0.5,  0.5,  0.5], // Front-top-left
-                    [ 0.5,  0.5,  0.5], // Front-top-right
-                    [-0.5, -0.5,  0.5], // Front-bottom-left
-                    [ 0.5, -0.5,  0.5], // Front-bottom-right
-                    [ 0.5, -0.5, -0.5], // Back-bottom-right
-                    [ 0.5,  0.5,  0.5], // Front-top-right
-                    [ 0.5,  0.5, -0.5], // Back-top-right
-                    [-0.5,  0.5,  0.5], // Front-top-left
-                    [-0.5,  0.5, -0.5], // Back-top-left
-                    [-0.5, -0.5,  0.5], // Front-bottom-le5t
-                    [-0.5, -0.5, -0.5], // Back-bottom-left
-                    [ 0.5, -0.5, -0.5], // Back-bottom-right
-                    [-0.5,  0.5, -0.5], // Back-top-left
-                    [ 0.5,  0.5, -0.5], // Back-top-right
-                ],
-            );
+            .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions);
 
             let _ = sender.send(ChunkMeshFinished { chunk, mesh });
         })
@@ -95,4 +90,24 @@ fn mesh_finished(
             MeshMaterial3d(materials.add(StandardMaterial::default())),
         ));
     }
+}
+
+fn cube(x: f32, y: f32, z: f32) -> [[f32; 3]; 14] {
+    [
+        // Taken from: https://stackoverflow.com/a/46016469
+        [x - 0.5, y + 0.5, z + 0.5], // Front-top-left
+        [x + 0.5, y + 0.5, z + 0.5], // Front-top-right
+        [x - 0.5, y - 0.5, z + 0.5], // Front-bottom-left
+        [x + 0.5, y - 0.5, z + 0.5], // Front-bottom-right
+        [x + 0.5, y - 0.5, z - 0.5], // Back-bottom-right
+        [x + 0.5, y + 0.5, z + 0.5], // Front-top-right
+        [x + 0.5, y + 0.5, z - 0.5], // Back-top-right
+        [x - 0.5, y + 0.5, z + 0.5], // Front-top-left
+        [x - 0.5, y + 0.5, z - 0.5], // Back-top-left
+        [x - 0.5, y - 0.5, z + 0.5], // Front-bottom-le5t
+        [x - 0.5, y - 0.5, z - 0.5], // Back-bottom-left
+        [x + 0.5, y - 0.5, z - 0.5], // Back-bottom-right
+        [x - 0.5, y + 0.5, z - 0.5], // Back-top-left
+        [x + 0.5, y + 0.5, z - 0.5], // Back-top-right
+    ]
 }

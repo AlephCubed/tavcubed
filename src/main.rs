@@ -1,10 +1,12 @@
 mod chunk;
 
 use crate::chunk::mesh::{ChunkMesh, ChunkMeshPlugin};
-use crate::chunk::{ChunkPos, VoxelBuffer};
+use crate::chunk::voxel::Voxel;
+use crate::chunk::{ChunkPos, VoxelBuffer, CHUNK_VOXEL_COUNT};
 use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
 use bevy::log::LogPlugin;
 use bevy::prelude::*;
+use std::num::NonZeroU8;
 
 fn main() -> AppExit {
     App::new()
@@ -19,11 +21,13 @@ fn main() -> AppExit {
 }
 
 fn init_test(mut commands: Commands) {
-    commands.spawn((
-        ChunkPos::default(),
-        VoxelBuffer::default(),
-        ChunkMesh::default(),
-    ));
+    let mut voxels = VoxelBuffer::default();
+
+    for i in 0..(CHUNK_VOXEL_COUNT / 2) {
+        voxels.0[i * 2] = Some(Voxel { id: NonZeroU8::MIN });
+    }
+
+    commands.spawn((ChunkPos::default(), voxels, ChunkMesh::default()));
 
     commands.spawn((Camera3d::default(), FreeCamera::default()));
 }
