@@ -1,4 +1,6 @@
 use crate::chunk::{DirtyFlag, VoxelBuffer};
+use bevy::asset::RenderAssetUsages;
+use bevy::mesh::PrimitiveTopology;
 use bevy::prelude::*;
 use bevy::tasks::AsyncComputeTaskPool;
 use crossbeam_channel::{Receiver, Sender};
@@ -14,7 +16,7 @@ impl Plugin for ChunkMeshPlugin {
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Default, Debug)]
 pub struct ChunkMesh(pub Handle<Mesh>);
 
 #[derive(Resource)]
@@ -25,7 +27,7 @@ struct ChunkMeshChannel {
 
 struct ChunkMeshFinished {
     chunk: Entity,
-    mesh: Handle<Mesh>,
+    mesh: Mesh,
 }
 
 fn mesh_dirty_chunks(
@@ -37,26 +39,54 @@ fn mesh_dirty_chunks(
     for (chunk, buffer) in &chunks {
         let sender = channel.sender.clone();
 
+        info!("Meshing {chunk}");
+
         pool.spawn(async move {
-            let _ = sender.send(ChunkMeshFinished {
-                chunk,
-                mesh: Default::default(),
-            });
+            #[rustfmt::skip]
+            let mesh = Mesh::new(
+                PrimitiveTopology::TriangleStrip,
+                RenderAssetUsages::default(),
+            )
+            .with_inserted_attribute(
+                Mesh::ATTRIBUTE_POSITION,
+                vec![ // Taken from: https://stackoverflow.com/a/46016469
+                    [-0.5,  0.5,  0.5], // Front-top-left
+                    [ 0.5,  0.5,  0.5], // Front-top-right
+                    [-0.5, -0.5,  0.5], // Front-bottom-left
+                    [ 0.5, -0.5,  0.5], // Front-bottom-right
+                    [ 0.5, -0.5, -0.5], // Back-bottom-right
+                    [ 0.5,  0.5,  0.5], // Front-top-right
+                    [ 0.5,  0.5, -0.5], // Back-top-right
+                    [-0.5,  0.5,  0.5], // Front-top-left
+                    [-0.5,  0.5, -0.5], // Back-top-left
+                    [-0.5, -0.5,  0.5], // Front-bottom-le5t
+                    [-0.5, -0.5, -0.5], // Back-bottom-left
+                    [ 0.5, -0.5, -0.5], // Back-bottom-right
+                    [-0.5,  0.5, -0.5], // Back-top-left
+                    [ 0.5,  0.5, -0.5], // Back-top-right
+                ],
+            );
+
+            let _ = sender.send(ChunkMeshFinished { chunk, mesh });
         })
         .detach();
     }
 }
 
 fn mesh_finished(
+    mut commands: Commands,
     channel: Res<ChunkMeshChannel>,
-    mut meshes: Query<&mut ChunkMesh, With<DirtyFlag>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut chunk_meshes: Query<&mut ChunkMesh, With<DirtyFlag>>,
 ) {
     for msg in channel.receiver.try_iter() {
-        let Ok(mut mesh) = meshes.get_mut(msg.chunk) else {
-            warn!("Mesh finished for deleted chunk");
+        let Ok(mut mesh) = chunk_meshes.get_mut(msg.chunk) else {
+            warn!("Mesh finished for deleted chunk {}", msg.chunk);
             continue;
         };
 
-        mesh.0 = msg.mesh;
+        mesh.0 = meshes.add(msg.mesh);
+
+        commands.entity(msg.chunk).remove::<DirtyFlag>();
     }
 }
