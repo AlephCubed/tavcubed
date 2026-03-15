@@ -21,6 +21,10 @@ pub struct VoxelBuffer(pub [Option<Voxel>; CHUNK_VOXEL_COUNT]);
 impl VoxelBuffer {
     #[inline]
     pub fn index_to_pos(index: usize) -> U8Vec3 {
+        assert!(
+            index < CHUNK_VOXEL_COUNT,
+            "Index must be less than 32^3, got {index}"
+        );
         U8Vec3 {
             x: (index % 32) as u8,
             y: ((index / 32) % 32) as u8,
@@ -30,7 +34,10 @@ impl VoxelBuffer {
 
     #[inline]
     pub fn pos_to_index(pos: U8Vec3) -> usize {
-        (pos.z as usize * 32 * 32) + (pos.y as usize * 32) + pos.x as usize
+        assert!(pos.x < 32, "x position must be less than 32, got {}", pos.x);
+        assert!(pos.y < 32, "y position must be less than 32, got {}", pos.y);
+        assert!(pos.z < 32, "z position must be less than 32, got {}", pos.z);
+        ((pos.z as usize) << 10) + ((pos.y as usize) << 5) + pos.x as usize
     }
 }
 
@@ -140,5 +147,29 @@ mod tests {
             VoxelBuffer::pos_to_index(U8Vec3::new(31, 31, 31)),
             CHUNK_VOXEL_COUNT - 1
         );
+    }
+
+    #[test]
+    #[should_panic(expected = "Index must be less than 32^3, got 32768")]
+    fn index_to_pos_invalid() {
+        _ = VoxelBuffer::index_to_pos(CHUNK_VOXEL_COUNT)
+    }
+
+    #[test]
+    #[should_panic(expected = "x position must be less than 32, got 32")]
+    fn pos_to_index_invalid_x() {
+        _ = VoxelBuffer::pos_to_index(U8Vec3::new(32, 0, 0));
+    }
+
+    #[test]
+    #[should_panic(expected = "y position must be less than 32, got 32")]
+    fn pos_to_index_invalid_y() {
+        _ = VoxelBuffer::pos_to_index(U8Vec3::new(16, 32, 16));
+    }
+
+    #[test]
+    #[should_panic(expected = "z position must be less than 32, got 32")]
+    fn pos_to_index_invalid_z() {
+        _ = VoxelBuffer::pos_to_index(U8Vec3::new(31, 31, 32));
     }
 }
