@@ -44,6 +44,8 @@ fn mesh_changed_chunks(
 
         debug!("Meshing {chunk}");
 
+        debug!("Buffer: {buffer}");
+
         let buffer = buffer.0.clone();
 
         pool.spawn(async move {

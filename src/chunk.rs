@@ -4,6 +4,7 @@ pub mod voxel;
 use crate::chunk::voxel::Voxel;
 use bevy::math::U8Vec3;
 use bevy::prelude::*;
+use std::fmt::Formatter;
 use std::ops::{Index, IndexMut};
 
 #[derive(Component, Default, Debug, Eq, PartialEq, Ord, PartialOrd)]
@@ -38,6 +39,24 @@ impl VoxelBuffer {
         assert!(pos.y < 32, "y position must be less than 32, got {}", pos.y);
         assert!(pos.z < 32, "z position must be less than 32, got {}", pos.z);
         ((pos.z as usize) << 10) + ((pos.y as usize) << 5) + pos.x as usize
+    }
+}
+
+impl std::fmt::Display for VoxelBuffer {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for (i, v) in self.0.iter().enumerate() {
+            if i % 32 == 0 {
+                writeln!(f, "")?;
+            }
+
+            if i % (32 * 32) == 0 {
+                writeln!(f, "Z={}", i / (32 * 32))?;
+            }
+
+            write!(f, "{:x}", v.map(|v| v.id.get()).unwrap_or(0))?;
+        }
+
+        Ok(())
     }
 }
 
