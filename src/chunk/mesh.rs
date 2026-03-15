@@ -1,4 +1,7 @@
+mod cube;
+
 use crate::chunk::VoxelBuffer;
+use crate::chunk::mesh::cube::cube;
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
@@ -100,86 +103,4 @@ fn mesh_finished(
             MeshMaterial3d(materials.add(StandardMaterial::default())),
         ));
     }
-}
-
-// Taken from: https://github.com/bevyengine/bevy/blob/main/examples/3d/generate_custom_mesh.rs
-fn cube(x: f32, y: f32, z: f32, index: u32) -> ([u32; 36], [[f32; 3]; 24]) {
-    (
-        [
-            // top (+y).
-            index + 0,
-            index + 3,
-            index + 1,
-            index + 1,
-            index + 3,
-            index + 2,
-            // bottom (-y)
-            index + 4,
-            index + 5,
-            index + 7,
-            index + 5,
-            index + 6,
-            index + 7,
-            // right (+x)
-            index + 8,
-            index + 11,
-            index + 9,
-            index + 9,
-            index + 11,
-            index + 10,
-            // left (-x)
-            index + 12,
-            index + 13,
-            index + 15,
-            index + 13,
-            index + 14,
-            index + 15,
-            // back (+z)
-            index + 16,
-            index + 19,
-            index + 17,
-            index + 17,
-            index + 19,
-            index + 18,
-            // forward (-z)
-            index + 20,
-            index + 21,
-            index + 23,
-            index + 21,
-            index + 22,
-            index + 23,
-        ],
-        [
-            // top (+y)
-            [x - 0.5, y + 0.5, z - 0.5],
-            [x + 0.5, y + 0.5, z - 0.5],
-            [x + 0.5, y + 0.5, z + 0.5],
-            [x - 0.5, y + 0.5, z + 0.5],
-            // bottom (-y)
-            [x - 0.5, y - 0.5, z - 0.5],
-            [x + 0.5, y - 0.5, z - 0.5],
-            [x + 0.5, y - 0.5, z + 0.5],
-            [x - 0.5, y - 0.5, z + 0.5],
-            // right (+x)
-            [x + 0.5, y - 0.5, z - 0.5],
-            [x + 0.5, y - 0.5, z + 0.5],
-            [x + 0.5, y + 0.5, z + 0.5],
-            [x + 0.5, y + 0.5, z - 0.5],
-            // left (-x)
-            [x - 0.5, y - 0.5, z - 0.5],
-            [x - 0.5, y - 0.5, z + 0.5],
-            [x - 0.5, y + 0.5, z + 0.5],
-            [x - 0.5, y + 0.5, z - 0.5],
-            // back (+z)
-            [x - 0.5, y - 0.5, z + 0.5],
-            [x - 0.5, y + 0.5, z + 0.5],
-            [x + 0.5, y + 0.5, z + 0.5],
-            [x + 0.5, y - 0.5, z + 0.5],
-            // forward (-z)
-            [x - 0.5, y - 0.5, z - 0.5],
-            [x - 0.5, y + 0.5, z - 0.5],
-            [x + 0.5, y + 0.5, z - 0.5],
-            [x + 0.5, y - 0.5, z - 0.5],
-        ],
-    )
 }

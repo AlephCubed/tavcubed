@@ -23,11 +23,7 @@ fn main() -> AppExit {
 }
 
 fn init_test(mut commands: Commands) {
-    let mut voxels = VoxelBuffer::default();
-
-    for i in 0..(CHUNK_VOXEL_COUNT / 16) {
-        voxels.0[i * 3] = Some(Voxel { id: NonZeroU8::MIN });
-    }
+    let mut voxels = VoxelBuffer([Some(Voxel { id: NonZeroU8::MIN }); CHUNK_VOXEL_COUNT]);
 
     commands.spawn((ChunkPos::default(), voxels, ChunkMesh::default()));
 
