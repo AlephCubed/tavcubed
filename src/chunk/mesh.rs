@@ -1,8 +1,12 @@
 mod cube;
 
 use crate::chunk::VoxelBuffer;
-use crate::chunk::mesh::cube::cube;
+use crate::chunk::mesh::cube::{
+    face_back, face_bottom, face_front, face_left, face_right, face_top, get_indices_neg,
+    get_indices_pos,
+};
 use bevy::asset::RenderAssetUsages;
+use bevy::math::U8Vec3;
 use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
 use bevy::tasks::AsyncComputeTaskPool;
@@ -46,28 +50,51 @@ fn mesh_changed_chunks(
 
         debug!("Buffer: {buffer}");
 
-        let buffer = buffer.0.clone();
+        let buffer = buffer.clone();
 
         pool.spawn(async move {
             let mut indices = Vec::new();
             let mut positions = Vec::new();
 
             for (index, _voxel) in buffer
+                .0
                 .iter()
                 .enumerate()
                 .filter_map(|(i, v)| v.map(|v| (i, v)))
             {
                 let pos = VoxelBuffer::index_to_pos(index);
 
-                let (i, p) = cube(
-                    pos.x as f32,
-                    pos.y as f32,
-                    pos.z as f32,
-                    indices.len() as u32 * 36,
-                );
+                let (x, y, z) = (pos.x as f32, pos.y as f32, pos.z as f32);
 
-                indices.extend_from_slice(&i);
-                positions.extend_from_slice(&p);
+                if pos.x == 31 || buffer[pos + U8Vec3::X].is_none() {
+                    indices.extend(get_indices_pos(positions.len() as u32));
+                    positions.extend(face_right(x, y, z));
+                }
+
+                if pos.x == 0 || buffer[pos - U8Vec3::X].is_none() {
+                    indices.extend(get_indices_neg(positions.len() as u32));
+                    positions.extend(face_left(x, y, z));
+                }
+
+                if pos.y == 31 || buffer[pos + U8Vec3::Y].is_none() {
+                    indices.extend(get_indices_pos(positions.len() as u32));
+                    positions.extend(face_top(x, y, z));
+                }
+
+                if pos.y == 0 || buffer[pos - U8Vec3::Y].is_none() {
+                    indices.extend(get_indices_neg(positions.len() as u32));
+                    positions.extend(face_bottom(x, y, z));
+                }
+
+                if pos.z == 31 || buffer[pos + U8Vec3::Z].is_none() {
+                    indices.extend(get_indices_pos(positions.len() as u32));
+                    positions.extend(face_back(x, y, z));
+                }
+
+                if pos.z == 0 || buffer[pos - U8Vec3::Z].is_none() {
+                    indices.extend(get_indices_neg(positions.len() as u32));
+                    positions.extend(face_front(x, y, z));
+                }
             }
 
             let mesh = Mesh::new(

@@ -19,6 +19,12 @@ pub const CHUNK_VOXEL_COUNT: usize = 32 * 32 * 32;
 #[derive(Component, Debug)]
 pub struct VoxelBuffer(pub [Option<Voxel>; CHUNK_VOXEL_COUNT]);
 
+impl Clone for VoxelBuffer {
+    fn clone(&self) -> Self {
+        Self { 0: self.0.clone() }
+    }
+}
+
 impl VoxelBuffer {
     #[inline]
     pub fn index_to_pos(index: usize) -> U8Vec3 {
