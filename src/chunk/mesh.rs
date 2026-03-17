@@ -1,3 +1,5 @@
+//! Mesh generation for chunks.
+
 mod cube;
 
 use crate::chunk::VoxelBuffer;
@@ -26,17 +28,20 @@ impl Plugin for ChunkMeshPlugin {
 #[derive(Component, Default, Debug)]
 pub struct ChunkMesh(pub Handle<Mesh>);
 
+/// A channel to send finished meshes through to be applied.
 #[derive(Resource)]
 struct ChunkMeshChannel {
     sender: Sender<ChunkMeshFinished>,
     receiver: Receiver<ChunkMeshFinished>,
 }
 
+/// A message to send down the [`ChunkMeshChannel`].
 struct ChunkMeshFinished {
     chunk: Entity,
     mesh: Mesh,
 }
 
+/// Spins up meshing tasks for changed chunks.
 fn mesh_changed_chunks(
     channel: Res<ChunkMeshChannel>,
     chunks: Query<(Entity, &VoxelBuffer), Changed<VoxelBuffer>>,
@@ -53,63 +58,68 @@ fn mesh_changed_chunks(
         let buffer = buffer.clone();
 
         pool.spawn(async move {
-            let mut indices = Vec::new();
-            let mut positions = Vec::new();
-
-            for (index, _voxel) in buffer
-                .0
-                .iter()
-                .enumerate()
-                .filter_map(|(i, v)| v.map(|v| (i, v)))
-            {
-                let pos = VoxelBuffer::index_to_pos(index);
-
-                let (x, y, z) = (pos.x as f32, pos.y as f32, pos.z as f32);
-
-                if pos.x == 31 || buffer[pos + U8Vec3::X].is_none() {
-                    indices.extend(get_indices_pos(positions.len() as u32));
-                    positions.extend(face_right(x, y, z));
-                }
-
-                if pos.x == 0 || buffer[pos - U8Vec3::X].is_none() {
-                    indices.extend(get_indices_neg(positions.len() as u32));
-                    positions.extend(face_left(x, y, z));
-                }
-
-                if pos.y == 31 || buffer[pos + U8Vec3::Y].is_none() {
-                    indices.extend(get_indices_pos(positions.len() as u32));
-                    positions.extend(face_top(x, y, z));
-                }
-
-                if pos.y == 0 || buffer[pos - U8Vec3::Y].is_none() {
-                    indices.extend(get_indices_neg(positions.len() as u32));
-                    positions.extend(face_bottom(x, y, z));
-                }
-
-                if pos.z == 31 || buffer[pos + U8Vec3::Z].is_none() {
-                    indices.extend(get_indices_pos(positions.len() as u32));
-                    positions.extend(face_back(x, y, z));
-                }
-
-                if pos.z == 0 || buffer[pos - U8Vec3::Z].is_none() {
-                    indices.extend(get_indices_neg(positions.len() as u32));
-                    positions.extend(face_front(x, y, z));
-                }
-            }
-
-            let mesh = Mesh::new(
-                PrimitiveTopology::TriangleList,
-                RenderAssetUsages::default(),
-            )
-            .with_inserted_indices(Indices::U32(indices))
-            .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions);
-
+            let mesh = mesh_chunk(buffer);
             let _ = sender.send(ChunkMeshFinished { chunk, mesh });
         })
         .detach();
     }
 }
 
+/// Creates a mesh from a chunk's voxel buffer.
+fn mesh_chunk(buffer: VoxelBuffer) -> Mesh {
+    let mut indices = Vec::new();
+    let mut positions = Vec::new();
+
+    for (index, _voxel) in buffer
+        .0
+        .iter()
+        .enumerate()
+        .filter_map(|(i, v)| v.map(|v| (i, v)))
+    {
+        let pos = VoxelBuffer::index_to_pos(index);
+
+        let (x, y, z) = (pos.x as f32, pos.y as f32, pos.z as f32);
+
+        if pos.x == 31 || buffer[pos + U8Vec3::X].is_none() {
+            indices.extend(get_indices_pos(positions.len() as u32));
+            positions.extend(face_right(x, y, z));
+        }
+
+        if pos.x == 0 || buffer[pos - U8Vec3::X].is_none() {
+            indices.extend(get_indices_neg(positions.len() as u32));
+            positions.extend(face_left(x, y, z));
+        }
+
+        if pos.y == 31 || buffer[pos + U8Vec3::Y].is_none() {
+            indices.extend(get_indices_pos(positions.len() as u32));
+            positions.extend(face_top(x, y, z));
+        }
+
+        if pos.y == 0 || buffer[pos - U8Vec3::Y].is_none() {
+            indices.extend(get_indices_neg(positions.len() as u32));
+            positions.extend(face_bottom(x, y, z));
+        }
+
+        if pos.z == 31 || buffer[pos + U8Vec3::Z].is_none() {
+            indices.extend(get_indices_pos(positions.len() as u32));
+            positions.extend(face_back(x, y, z));
+        }
+
+        if pos.z == 0 || buffer[pos - U8Vec3::Z].is_none() {
+            indices.extend(get_indices_neg(positions.len() as u32));
+            positions.extend(face_front(x, y, z));
+        }
+    }
+
+    Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::default(),
+    )
+    .with_inserted_indices(Indices::U32(indices))
+    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
+}
+
+/// Applies finished meshes to changed chunks.
 fn mesh_finished(
     mut commands: Commands,
     channel: Res<ChunkMeshChannel>,
