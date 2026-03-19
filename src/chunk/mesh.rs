@@ -3,12 +3,11 @@
 pub mod cube;
 
 use crate::chunk::mesh::cube::{
-    face_back, face_bottom, face_front, face_left, face_right, face_top, get_indices_neg,
-    get_indices_pos,
+    INDICES_PER_FACE, VERTICES_PER_FACE, face_back, face_bottom, face_front, face_left, face_right,
+    face_top, get_indices_neg, get_indices_pos,
 };
 use crate::chunk::{STRIDE_X, STRIDE_Y, STRIDE_Z, VoxelBuffer};
 use bevy::asset::RenderAssetUsages;
-use bevy::math::U8Vec3;
 use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
 use bevy::tasks::AsyncComputeTaskPool;
@@ -67,8 +66,11 @@ fn mesh_changed_chunks(
 
 /// Creates a mesh from a chunk's voxel buffer.
 pub fn mesh_chunk(buffer: VoxelBuffer) -> Mesh {
-    let mut indices = Vec::new();
-    let mut positions = Vec::new();
+    let voxel_count = buffer.0.iter().filter(|v| v.is_some()).count();
+    let face_estimate = voxel_count * 3; // Estimate half faces.
+
+    let mut indices = Vec::with_capacity(face_estimate * INDICES_PER_FACE);
+    let mut positions = Vec::with_capacity(face_estimate * VERTICES_PER_FACE);
 
     for full_index in buffer
         .0
