@@ -38,7 +38,7 @@ impl VoxelBuffer {
         U8Vec3 {
             x: (index % 32) as u8,
             y: ((index / 32) % 32) as u8,
-            z: ((index / 32) / 32) as u8,
+            z: (index / (32 * 32)) as u8,
         }
     }
 

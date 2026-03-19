@@ -2,11 +2,11 @@
 
 pub mod cube;
 
-use crate::chunk::VoxelBuffer;
 use crate::chunk::mesh::cube::{
     face_back, face_bottom, face_front, face_left, face_right, face_top, get_indices_neg,
     get_indices_pos,
 };
+use crate::chunk::{STRIDE_X, STRIDE_Y, STRIDE_Z, VoxelBuffer};
 use bevy::asset::RenderAssetUsages;
 use bevy::math::U8Vec3;
 use bevy::mesh::{Indices, PrimitiveTopology};
@@ -80,32 +80,32 @@ pub fn mesh_chunk(buffer: VoxelBuffer) -> Mesh {
 
         let (x, y, z) = (pos.x as f32, pos.y as f32, pos.z as f32);
 
-        if pos.x == 31 || buffer[pos + U8Vec3::X].is_none() {
+        if pos.x == 31 || buffer[full_index + STRIDE_X].is_none() {
             indices.extend(get_indices_pos(positions.len() as u32));
             positions.extend(face_right(x, y, z));
         }
 
-        if pos.x == 0 || buffer[pos - U8Vec3::X].is_none() {
+        if pos.x == 0 || buffer[full_index - STRIDE_X].is_none() {
             indices.extend(get_indices_neg(positions.len() as u32));
             positions.extend(face_left(x, y, z));
         }
 
-        if pos.y == 31 || buffer[pos + U8Vec3::Y].is_none() {
+        if pos.y == 31 || buffer[full_index + STRIDE_Y].is_none() {
             indices.extend(get_indices_pos(positions.len() as u32));
             positions.extend(face_top(x, y, z));
         }
 
-        if pos.y == 0 || buffer[pos - U8Vec3::Y].is_none() {
+        if pos.y == 0 || buffer[full_index - STRIDE_Y].is_none() {
             indices.extend(get_indices_neg(positions.len() as u32));
             positions.extend(face_bottom(x, y, z));
         }
 
-        if pos.z == 31 || buffer[pos + U8Vec3::Z].is_none() {
+        if pos.z == 31 || buffer[full_index + STRIDE_Z].is_none() {
             indices.extend(get_indices_pos(positions.len() as u32));
             positions.extend(face_back(x, y, z));
         }
 
-        if pos.z == 0 || buffer[pos - U8Vec3::Z].is_none() {
+        if pos.z == 0 || buffer[full_index - STRIDE_Z].is_none() {
             indices.extend(get_indices_neg(positions.len() as u32));
             positions.extend(face_front(x, y, z));
         }
