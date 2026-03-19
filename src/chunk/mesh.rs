@@ -1,6 +1,6 @@
 //! Mesh generation for chunks.
 
-mod cube;
+pub mod cube;
 
 use crate::chunk::VoxelBuffer;
 use crate::chunk::mesh::cube::{
@@ -66,7 +66,7 @@ fn mesh_changed_chunks(
 }
 
 /// Creates a mesh from a chunk's voxel buffer.
-fn mesh_chunk(buffer: VoxelBuffer) -> Mesh {
+pub fn mesh_chunk(buffer: VoxelBuffer) -> Mesh {
     let mut indices = Vec::new();
     let mut positions = Vec::new();
 

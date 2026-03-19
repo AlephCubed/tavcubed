@@ -17,6 +17,9 @@ tracing = { version = "0.1", features = [
   "release_max_level_warn",
 ] }
 
+[dev-dependencies]
+criterion = "0.8"
+
 # Idiomatic Bevy code often triggers these lints, and the CI workflow treats them as errors.
 # In some cases they may still signal poor code quality however, so consider commenting out these lines.
 [lints.clippy]
@@ -45,3 +48,7 @@ codegen-units = 1
 # Do a second optimization pass over the entire program, including dependencies.
 # Slows compile times, marginal improvements.
 lto = "thin"
+
+[[bench]]
+name = "mesh_chunk"
+harness = false
