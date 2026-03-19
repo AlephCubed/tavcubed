@@ -70,13 +70,13 @@ pub fn mesh_chunk(buffer: VoxelBuffer) -> Mesh {
     let mut indices = Vec::new();
     let mut positions = Vec::new();
 
-    for (index, _voxel) in buffer
+    for full_index in buffer
         .0
         .iter()
         .enumerate()
-        .filter_map(|(i, v)| v.map(|v| (i, v)))
+        .filter_map(|(i, v)| v.map(|_| i))
     {
-        let pos = VoxelBuffer::index_to_pos(index);
+        let pos = VoxelBuffer::index_to_pos(full_index);
 
         let (x, y, z) = (pos.x as f32, pos.y as f32, pos.z as f32);
 

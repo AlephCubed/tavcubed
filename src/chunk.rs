@@ -15,6 +15,9 @@ pub struct ChunkPos {
 }
 
 pub const CHUNK_VOXEL_COUNT: usize = 32 * 32 * 32;
+pub const STRIDE_X: usize = 1;
+pub const STRIDE_Y: usize = 32;
+pub const STRIDE_Z: usize = 32 * 32;
 
 #[derive(Component, Debug)]
 pub struct VoxelBuffer(pub [Option<Voxel>; CHUNK_VOXEL_COUNT]);

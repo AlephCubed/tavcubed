@@ -1,10 +1,10 @@
 //! Benchmarks for standard Bevy equivalents of effect operations.
 
-use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
+use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
 use tavcubed::chunk::mesh::mesh_chunk;
 use tavcubed::chunk::voxel::Voxel;
-use tavcubed::chunk::{VoxelBuffer, CHUNK_VOXEL_COUNT};
+use tavcubed::chunk::{CHUNK_VOXEL_COUNT, VoxelBuffer};
 
 fn mesh_chunk_empty(c: &mut Criterion) {
     let chunk = VoxelBuffer::default();
