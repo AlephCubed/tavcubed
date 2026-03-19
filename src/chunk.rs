@@ -46,6 +46,18 @@ impl VoxelBuffer {
         assert!(pos.z < 32, "z position must be less than 32, got {}", pos.z);
         ((pos.z as usize) << 10) + ((pos.y as usize) << 5) + pos.x as usize
     }
+
+    pub fn checkerboard() -> Self {
+        let mut chunk = Self::default();
+
+        for (index, voxel) in &mut chunk.0.iter_mut().enumerate() {
+            if VoxelBuffer::index_to_pos(index).element_sum() % 2 == 0 {
+                *voxel = Some(Voxel::default())
+            }
+        }
+
+        chunk
+    }
 }
 
 impl std::fmt::Display for VoxelBuffer {
