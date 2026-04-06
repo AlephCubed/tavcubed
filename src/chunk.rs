@@ -7,12 +7,8 @@ use bevy::prelude::*;
 use std::fmt::Formatter;
 use std::ops::{Index, IndexMut};
 
-#[derive(Component, Default, Debug, Eq, PartialEq, Ord, PartialOrd)]
-pub struct ChunkPos {
-    pub x: u32,
-    pub y: u32,
-    pub z: u32,
-}
+#[derive(Component, Deref, Default, Debug, Eq, PartialEq, Clone, Copy)]
+pub struct ChunkPos(pub IVec3);
 
 pub const CHUNK_VOXEL_COUNT: usize = 32 * 32 * 32;
 pub const STRIDE_X: usize = 1;

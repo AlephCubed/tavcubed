@@ -1,12 +1,14 @@
 //! Mesh generation for chunks.
 
 pub mod cube;
+mod material;
 
 use crate::chunk::mesh::cube::{
     INDICES_PER_FACE, VERTICES_PER_FACE, face_back, face_bottom, face_front, face_left, face_right,
     face_top, get_indices_neg, get_indices_pos,
 };
-use crate::chunk::{STRIDE_X, STRIDE_Y, STRIDE_Z, VoxelBuffer};
+use crate::chunk::mesh::material::ChunkMaterial;
+use crate::chunk::{ChunkPos, STRIDE_X, STRIDE_Y, STRIDE_Z, VoxelBuffer};
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
@@ -18,9 +20,9 @@ pub struct ChunkMeshPlugin;
 impl Plugin for ChunkMeshPlugin {
     fn build(&self, app: &mut App) {
         let (sender, receiver) = crossbeam_channel::unbounded();
-        app.insert_resource(ChunkMeshChannel { sender, receiver });
-
-        app.add_systems(Update, (mesh_changed_chunks, mesh_finished).chain());
+        app.insert_resource(ChunkMeshChannel { sender, receiver })
+            .add_systems(Update, (mesh_changed_chunks, mesh_finished).chain())
+            .add_plugins(MaterialPlugin::<ChunkMaterial>::default());
     }
 }
 
@@ -126,11 +128,11 @@ fn mesh_finished(
     mut commands: Commands,
     channel: Res<ChunkMeshChannel>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    mut chunk_meshes: Query<&mut ChunkMesh>,
+    mut materials: ResMut<Assets<ChunkMaterial>>,
+    mut chunk_meshes: Query<(&mut ChunkMesh, &ChunkPos)>,
 ) {
     for msg in channel.receiver.try_iter() {
-        let Ok(mut mesh) = chunk_meshes.get_mut(msg.chunk) else {
+        let Ok((mut mesh, pos)) = chunk_meshes.get_mut(msg.chunk) else {
             warn!("Mesh finished for deleted chunk {}", msg.chunk);
             continue;
         };
@@ -141,7 +143,7 @@ fn mesh_finished(
         mesh.0 = handle.clone();
         commands.entity(msg.chunk).insert((
             Mesh3d(handle),
-            MeshMaterial3d(materials.add(StandardMaterial::default())),
+            MeshMaterial3d(materials.add(ChunkMaterial { chunk_pos: pos.0 })),
         ));
     }
 }
