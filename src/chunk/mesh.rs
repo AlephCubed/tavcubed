@@ -2,15 +2,16 @@
 
 pub mod cube;
 mod material;
+mod packed_data;
 
 use crate::chunk::mesh::cube::{
-    INDICES_PER_FACE, VERTICES_PER_FACE, face_back, face_bottom, face_front, face_left, face_right,
-    face_top, get_indices_neg, get_indices_pos,
+    INDICES_PER_FACE, VERTICES_PER_FACE, get_indices_neg, get_indices_pos,
 };
 use crate::chunk::mesh::material::ChunkMaterial;
+use crate::chunk::mesh::packed_data::{Facing, pack};
 use crate::chunk::{ChunkPos, STRIDE_X, STRIDE_Y, STRIDE_Z, VoxelBuffer};
 use bevy::asset::RenderAssetUsages;
-use bevy::mesh::{Indices, PrimitiveTopology};
+use bevy::mesh::{Indices, MeshVertexAttribute, PrimitiveTopology, VertexFormat};
 use bevy::prelude::*;
 use bevy::tasks::AsyncComputeTaskPool;
 use crossbeam_channel::{Receiver, Sender};
@@ -28,6 +29,11 @@ impl Plugin for ChunkMeshPlugin {
 
 #[derive(Component, Default, Debug)]
 pub struct ChunkMesh(pub Handle<Mesh>);
+
+impl ChunkMesh {
+    pub const ATTRIBUTE_PACKED_DATA: MeshVertexAttribute =
+        MeshVertexAttribute::new("packed_data", 806567756968, VertexFormat::Uint32);
+}
 
 /// A channel to send finished meshes through to be applied.
 #[derive(Resource)]
@@ -54,8 +60,6 @@ fn mesh_changed_chunks(
 
         debug!("Meshing {chunk}");
 
-        debug!("Buffer: {buffer}");
-
         let buffer = buffer.clone();
 
         pool.spawn(async move {
@@ -72,7 +76,7 @@ pub fn mesh_chunk(buffer: VoxelBuffer) -> Mesh {
     let face_estimate = voxel_count * 3; // Estimate half faces.
 
     let mut indices = Vec::with_capacity(face_estimate * INDICES_PER_FACE);
-    let mut positions = Vec::with_capacity(face_estimate * VERTICES_PER_FACE);
+    let mut packed: Vec<u32> = Vec::with_capacity(face_estimate * VERTICES_PER_FACE);
 
     for full_index in buffer
         .0
@@ -82,36 +86,34 @@ pub fn mesh_chunk(buffer: VoxelBuffer) -> Mesh {
     {
         let pos = VoxelBuffer::index_to_pos(full_index);
 
-        let (x, y, z) = (pos.x as f32, pos.y as f32, pos.z as f32);
-
         if pos.x == 31 || buffer[full_index + STRIDE_X].is_none() {
-            indices.extend(get_indices_pos(positions.len() as u32));
-            positions.extend(face_right(x, y, z));
+            indices.extend(get_indices_pos(packed.len() as u32));
+            packed.extend([pack(pos, Facing::Right); 4]);
         }
 
         if pos.x == 0 || buffer[full_index - STRIDE_X].is_none() {
-            indices.extend(get_indices_neg(positions.len() as u32));
-            positions.extend(face_left(x, y, z));
+            indices.extend(get_indices_neg(packed.len() as u32));
+            packed.extend([pack(pos, Facing::Left); 4]);
         }
 
         if pos.y == 31 || buffer[full_index + STRIDE_Y].is_none() {
-            indices.extend(get_indices_pos(positions.len() as u32));
-            positions.extend(face_top(x, y, z));
+            indices.extend(get_indices_pos(packed.len() as u32));
+            packed.extend([pack(pos, Facing::Up); 4]);
         }
 
         if pos.y == 0 || buffer[full_index - STRIDE_Y].is_none() {
-            indices.extend(get_indices_neg(positions.len() as u32));
-            positions.extend(face_bottom(x, y, z));
+            indices.extend(get_indices_neg(packed.len() as u32));
+            packed.extend([pack(pos, Facing::Down); 4]);
         }
 
         if pos.z == 31 || buffer[full_index + STRIDE_Z].is_none() {
-            indices.extend(get_indices_pos(positions.len() as u32));
-            positions.extend(face_back(x, y, z));
+            indices.extend(get_indices_pos(packed.len() as u32));
+            packed.extend([pack(pos, Facing::Back); 4]);
         }
 
         if pos.z == 0 || buffer[full_index - STRIDE_Z].is_none() {
-            indices.extend(get_indices_neg(positions.len() as u32));
-            positions.extend(face_front(x, y, z));
+            indices.extend(get_indices_neg(packed.len() as u32));
+            packed.extend([pack(pos, Facing::Front); 4]);
         }
     }
 
@@ -120,7 +122,7 @@ pub fn mesh_chunk(buffer: VoxelBuffer) -> Mesh {
         RenderAssetUsages::default(),
     )
     .with_inserted_indices(Indices::U32(indices))
-    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
+    .with_inserted_attribute(ChunkMesh::ATTRIBUTE_PACKED_DATA, packed)
 }
 
 /// Applies finished meshes to changed chunks.
