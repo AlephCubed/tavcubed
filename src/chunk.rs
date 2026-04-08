@@ -27,7 +27,7 @@ impl Clone for VoxelBuffer {
 impl VoxelBuffer {
     #[inline]
     pub fn index_to_pos(index: usize) -> U8Vec3 {
-        assert!(
+        debug_assert!(
             index < CHUNK_VOXEL_COUNT,
             "Index must be less than 32^3, got {index}"
         );
@@ -40,9 +40,9 @@ impl VoxelBuffer {
 
     #[inline]
     pub fn pos_to_index(pos: U8Vec3) -> usize {
-        assert!(pos.x < 32, "x position must be less than 32, got {}", pos.x);
-        assert!(pos.y < 32, "y position must be less than 32, got {}", pos.y);
-        assert!(pos.z < 32, "z position must be less than 32, got {}", pos.z);
+        debug_assert!(pos.x < 32, "x position must be less than 32, got {}", pos.x);
+        debug_assert!(pos.y < 32, "y position must be less than 32, got {}", pos.y);
+        debug_assert!(pos.z < 32, "z position must be less than 32, got {}", pos.z);
         ((pos.z as usize) << 10) + ((pos.y as usize) << 5) + pos.x as usize
     }
 
