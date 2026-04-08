@@ -78,42 +78,42 @@ pub fn mesh_chunk(buffer: VoxelBuffer) -> Mesh {
     let mut indices = Vec::with_capacity(face_estimate * INDICES_PER_FACE);
     let mut packed: Vec<u32> = Vec::with_capacity(face_estimate * VERTICES_PER_FACE);
 
-    for full_index in buffer
+    for (full_index, voxel) in buffer
         .0
         .iter()
         .enumerate()
-        .filter_map(|(i, v)| v.map(|_| i))
+        .filter_map(|(i, v)| v.map(|v| (i, v)))
     {
         let pos = VoxelBuffer::index_to_pos(full_index);
 
         if pos.x == 31 || buffer[full_index + STRIDE_X].is_none() {
             indices.extend(get_indices_pos(packed.len() as u32));
-            packed.extend([pack(pos, Facing::Right); 4]);
+            packed.extend([pack(pos, Facing::Right, voxel); 4]);
         }
 
         if pos.x == 0 || buffer[full_index - STRIDE_X].is_none() {
             indices.extend(get_indices_neg(packed.len() as u32));
-            packed.extend([pack(pos, Facing::Left); 4]);
+            packed.extend([pack(pos, Facing::Left, voxel); 4]);
         }
 
         if pos.y == 31 || buffer[full_index + STRIDE_Y].is_none() {
             indices.extend(get_indices_pos(packed.len() as u32));
-            packed.extend([pack(pos, Facing::Up); 4]);
+            packed.extend([pack(pos, Facing::Up, voxel); 4]);
         }
 
         if pos.y == 0 || buffer[full_index - STRIDE_Y].is_none() {
             indices.extend(get_indices_neg(packed.len() as u32));
-            packed.extend([pack(pos, Facing::Down); 4]);
+            packed.extend([pack(pos, Facing::Down, voxel); 4]);
         }
 
         if pos.z == 31 || buffer[full_index + STRIDE_Z].is_none() {
             indices.extend(get_indices_pos(packed.len() as u32));
-            packed.extend([pack(pos, Facing::Back); 4]);
+            packed.extend([pack(pos, Facing::Back, voxel); 4]);
         }
 
         if pos.z == 0 || buffer[full_index - STRIDE_Z].is_none() {
             indices.extend(get_indices_neg(packed.len() as u32));
-            packed.extend([pack(pos, Facing::Front); 4]);
+            packed.extend([pack(pos, Facing::Front, voxel); 4]);
         }
     }
 
