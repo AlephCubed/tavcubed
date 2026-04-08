@@ -4,10 +4,10 @@ use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
 use tavcubed::chunk::mesh::mesh_chunk;
 use tavcubed::chunk::voxel::Voxel;
-use tavcubed::chunk::{CHUNK_VOXEL_COUNT, VoxelBuffer};
+use tavcubed::chunk::{CHUNK_VOXEL_COUNT, Chunk};
 
 fn mesh_chunk_empty(c: &mut Criterion) {
-    let chunk = VoxelBuffer::default();
+    let chunk = Chunk::default();
 
     c.bench_function("Mesh chunk empty", |b| {
         b.iter_batched(
@@ -19,7 +19,7 @@ fn mesh_chunk_empty(c: &mut Criterion) {
 }
 
 fn mesh_chunk_full(c: &mut Criterion) {
-    let chunk = VoxelBuffer([Some(Voxel::default()); CHUNK_VOXEL_COUNT]);
+    let chunk = Chunk::new([Some(Voxel::default()); CHUNK_VOXEL_COUNT]);
 
     c.bench_function("Mesh chunk full", |b| {
         b.iter_batched(
@@ -31,7 +31,7 @@ fn mesh_chunk_full(c: &mut Criterion) {
 }
 
 fn mesh_chunk_checkerboard(c: &mut Criterion) {
-    let chunk = VoxelBuffer::checkerboard();
+    let chunk = Chunk::checkerboard();
 
     c.bench_function("Mesh chunk checkerboard", |b| {
         b.iter_batched(

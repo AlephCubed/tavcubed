@@ -9,7 +9,7 @@ use crate::chunk::mesh::cube::{
 };
 use crate::chunk::mesh::material::ChunkMaterial;
 use crate::chunk::mesh::packed_data::{Facing, pack};
-use crate::chunk::{ChunkPos, STRIDE_X, STRIDE_Y, STRIDE_Z, VoxelBuffer};
+use crate::chunk::{Chunk, ChunkPos, STRIDE_X, STRIDE_Y, STRIDE_Z};
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, MeshVertexAttribute, PrimitiveTopology, VertexFormat};
 use bevy::prelude::*;
@@ -51,62 +51,65 @@ struct ChunkMeshFinished {
 /// Spins up meshing tasks for changed chunks.
 fn mesh_changed_chunks(
     channel: Res<ChunkMeshChannel>,
-    chunks: Query<(Entity, &VoxelBuffer), Changed<VoxelBuffer>>,
+    chunks: Query<(Entity, &Chunk), Changed<Chunk>>,
 ) {
     let pool = AsyncComputeTaskPool::get();
 
-    for (chunk, buffer) in &chunks {
+    for (entity, chunk) in &chunks {
         let sender = channel.sender.clone();
 
-        debug!("Meshing {chunk}");
+        debug!("Meshing {entity}");
 
-        let buffer = buffer.clone();
+        let chunk = *chunk;
 
         pool.spawn(async move {
-            let mesh = mesh_chunk(buffer);
-            let _ = sender.send(ChunkMeshFinished { chunk, mesh });
+            let mesh = mesh_chunk(chunk);
+            let _ = sender.send(ChunkMeshFinished {
+                chunk: entity,
+                mesh,
+            });
         })
         .detach();
     }
 }
 
-/// Creates a mesh from a chunk's voxel buffer.
-pub fn mesh_chunk(buffer: VoxelBuffer) -> Mesh {
-    let voxel_count = buffer.0.iter().filter(|v| v.is_some()).count();
+/// Creates a mesh from a chunk.
+pub fn mesh_chunk(chunk: Chunk) -> Mesh {
+    let voxel_count = chunk.iter().filter(|v| v.is_some()).count();
     let face_estimate = voxel_count * 3; // Estimate half faces.
 
     let mut indices = Vec::with_capacity(face_estimate * INDICES_PER_FACE);
     let mut packed: Vec<u32> = Vec::with_capacity(face_estimate * VERTICES_PER_FACE);
 
-    for (full_index, voxel) in buffer.iter_full() {
-        let pos = VoxelBuffer::index_to_pos(full_index);
+    for (full_index, voxel) in chunk.iter_full() {
+        let pos = Chunk::index_to_pos(full_index);
 
-        if pos.x == 31 || buffer[full_index + STRIDE_X].is_none() {
+        if pos.x == 31 || chunk[full_index + STRIDE_X].is_none() {
             indices.extend(get_indices_pos(packed.len() as u32));
             packed.extend([pack(pos, Facing::Right, voxel); 4]);
         }
 
-        if pos.x == 0 || buffer[full_index - STRIDE_X].is_none() {
+        if pos.x == 0 || chunk[full_index - STRIDE_X].is_none() {
             indices.extend(get_indices_neg(packed.len() as u32));
             packed.extend([pack(pos, Facing::Left, voxel); 4]);
         }
 
-        if pos.y == 31 || buffer[full_index + STRIDE_Y].is_none() {
+        if pos.y == 31 || chunk[full_index + STRIDE_Y].is_none() {
             indices.extend(get_indices_pos(packed.len() as u32));
             packed.extend([pack(pos, Facing::Up, voxel); 4]);
         }
 
-        if pos.y == 0 || buffer[full_index - STRIDE_Y].is_none() {
+        if pos.y == 0 || chunk[full_index - STRIDE_Y].is_none() {
             indices.extend(get_indices_neg(packed.len() as u32));
             packed.extend([pack(pos, Facing::Down, voxel); 4]);
         }
 
-        if pos.z == 31 || buffer[full_index + STRIDE_Z].is_none() {
+        if pos.z == 31 || chunk[full_index + STRIDE_Z].is_none() {
             indices.extend(get_indices_pos(packed.len() as u32));
             packed.extend([pack(pos, Facing::Back, voxel); 4]);
         }
 
-        if pos.z == 0 || buffer[full_index - STRIDE_Z].is_none() {
+        if pos.z == 0 || chunk[full_index - STRIDE_Z].is_none() {
             indices.extend(get_indices_neg(packed.len() as u32));
             packed.extend([pack(pos, Facing::Front, voxel); 4]);
         }

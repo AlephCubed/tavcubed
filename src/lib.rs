@@ -1,7 +1,7 @@
 pub mod chunk;
 
 use crate::chunk::mesh::{ChunkMesh, ChunkMeshPlugin};
-use crate::chunk::{ChunkPos, VoxelBuffer};
+use crate::chunk::{Chunk, ChunkPos};
 use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
 use bevy::log::LogPlugin;
 use bevy::pbr::wireframe::{WireframeConfig, WireframePlugin};
@@ -23,7 +23,7 @@ pub fn app() -> App {
 }
 
 fn init_test(mut commands: Commands) {
-    let voxels = VoxelBuffer::checkerboard();
+    let voxels = Chunk::checkerboard();
 
     commands.spawn((ChunkPos::default(), voxels, ChunkMesh::default()));
 

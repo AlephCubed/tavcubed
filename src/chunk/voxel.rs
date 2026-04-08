@@ -1,6 +1,6 @@
 use std::num::NonZeroU8;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Voxel {
     pub id: NonZeroU8,
 }

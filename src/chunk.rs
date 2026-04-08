@@ -15,16 +15,17 @@ pub const STRIDE_X: usize = 1;
 pub const STRIDE_Y: usize = 32;
 pub const STRIDE_Z: usize = 32 * 32;
 
-#[derive(Component, Debug)]
-pub struct VoxelBuffer(pub [Option<Voxel>; CHUNK_VOXEL_COUNT]);
+pub type VoxelBuffer = [Option<Voxel>; CHUNK_VOXEL_COUNT];
+pub type IntoIter = std::array::IntoIter<Option<Voxel>, CHUNK_VOXEL_COUNT>;
+pub type Iter<'a> = core::slice::Iter<'a, Option<Voxel>>;
+pub type IterMut<'a> = core::slice::IterMut<'a, Option<Voxel>>;
 
-impl Clone for VoxelBuffer {
-    fn clone(&self) -> Self {
-        Self { 0: self.0.clone() }
-    }
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Chunk {
+    buffer: VoxelBuffer,
 }
 
-impl VoxelBuffer {
+impl Chunk {
     #[inline]
     pub fn index_to_pos(index: usize) -> U8Vec3 {
         debug_assert!(
@@ -46,11 +47,34 @@ impl VoxelBuffer {
         ((pos.z as usize) << 10) + ((pos.y as usize) << 5) + pos.x as usize
     }
 
+    pub fn new(buffer: VoxelBuffer) -> Self {
+        Self { buffer }
+    }
+
+    pub fn checkerboard() -> Self {
+        let mut chunk = Self::default();
+
+        for (index, voxel) in &mut chunk.iter_mut().enumerate() {
+            if Chunk::index_to_pos(index).element_sum().is_multiple_of(2) {
+                *voxel = Some(Voxel::default())
+            }
+        }
+
+        chunk
+    }
+
+    pub fn iter(&'_ self) -> Iter<'_> {
+        self.buffer.iter()
+    }
+
+    pub fn iter_mut(&'_ mut self) -> IterMut<'_> {
+        self.buffer.iter_mut()
+    }
+
     /// Returns an enumerated iterator over all non-empty voxels.
     #[inline]
     pub fn iter_full(&self) -> impl Iterator<Item = (usize, Voxel)> {
-        self.0
-            .iter()
+        self.iter()
             .enumerate()
             .filter_map(|(i, v)| v.map(|v| (i, v)))
     }
@@ -103,27 +127,15 @@ impl VoxelBuffer {
     /// Removes all voxels from the buffer.
     #[inline]
     pub fn clear(&mut self) {
-        self.0 = [None; CHUNK_VOXEL_COUNT];
-    }
-
-    pub fn checkerboard() -> Self {
-        let mut chunk = Self::default();
-
-        for (index, voxel) in &mut chunk.0.iter_mut().enumerate() {
-            if VoxelBuffer::index_to_pos(index).element_sum() % 2 == 0 {
-                *voxel = Some(Voxel::default())
-            }
-        }
-
-        chunk
+        self.buffer = [None; CHUNK_VOXEL_COUNT];
     }
 }
 
-impl std::fmt::Display for VoxelBuffer {
+impl std::fmt::Display for Chunk {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        for (i, v) in self.0.iter().enumerate() {
+        for (i, v) in self.iter().enumerate() {
             if i % 32 == 0 {
-                writeln!(f, "")?;
+                writeln!(f)?;
             }
 
             if i % (32 * 32) == 0 {
@@ -137,37 +149,48 @@ impl std::fmt::Display for VoxelBuffer {
     }
 }
 
-impl Index<usize> for VoxelBuffer {
+impl Index<usize> for Chunk {
     type Output = Option<Voxel>;
 
     fn index(&self, index: usize) -> &Self::Output {
-        &self.0[index]
+        &self.buffer[index]
     }
 }
 
-impl IndexMut<usize> for VoxelBuffer {
+impl IndexMut<usize> for Chunk {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.0[index]
+        &mut self.buffer[index]
     }
 }
 
-impl Index<U8Vec3> for VoxelBuffer {
+impl Index<U8Vec3> for Chunk {
     type Output = Option<Voxel>;
 
     fn index(&self, pos: U8Vec3) -> &Self::Output {
-        &self.0[Self::pos_to_index(pos)]
+        &self.buffer[Self::pos_to_index(pos)]
     }
 }
 
-impl IndexMut<U8Vec3> for VoxelBuffer {
+impl IndexMut<U8Vec3> for Chunk {
     fn index_mut(&mut self, pos: U8Vec3) -> &mut Self::Output {
-        &mut self.0[Self::pos_to_index(pos)]
+        &mut self.buffer[Self::pos_to_index(pos)]
     }
 }
 
-impl Default for VoxelBuffer {
+impl IntoIterator for Chunk {
+    type Item = Option<Voxel>;
+    type IntoIter = IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.buffer.into_iter()
+    }
+}
+
+impl Default for Chunk {
     fn default() -> Self {
-        Self([None; CHUNK_VOXEL_COUNT])
+        Self {
+            buffer: [None; CHUNK_VOXEL_COUNT],
+        }
     }
 }
 
@@ -178,61 +201,49 @@ mod tests {
     #[test]
     fn index_to_pos_x() {
         for x in 0..32 {
-            assert_eq!(VoxelBuffer::index_to_pos(x), U8Vec3::new(x as u8, 0, 0));
+            assert_eq!(Chunk::index_to_pos(x), U8Vec3::new(x as u8, 0, 0));
         }
     }
 
     #[test]
     fn pos_to_index_x() {
         for x in 0..32 {
-            assert_eq!(VoxelBuffer::pos_to_index(U8Vec3::new(x as u8, 0, 0)), x);
+            assert_eq!(Chunk::pos_to_index(U8Vec3::new(x as u8, 0, 0)), x);
         }
     }
 
     #[test]
     fn index_to_pos_y() {
         for y in 0..32 {
-            assert_eq!(
-                VoxelBuffer::index_to_pos(y * 32),
-                U8Vec3::new(0, y as u8, 0)
-            );
+            assert_eq!(Chunk::index_to_pos(y * 32), U8Vec3::new(0, y as u8, 0));
         }
     }
 
     #[test]
     fn pos_to_index_y() {
         for y in 0..32 {
-            assert_eq!(
-                VoxelBuffer::pos_to_index(U8Vec3::new(0, y as u8, 0)),
-                y * 32
-            );
+            assert_eq!(Chunk::pos_to_index(U8Vec3::new(0, y as u8, 0)), y * 32);
         }
     }
 
     #[test]
     fn index_to_pos_z() {
         for z in 0..32 {
-            assert_eq!(
-                VoxelBuffer::index_to_pos(z * 32 * 32),
-                U8Vec3::new(0, 0, z as u8)
-            );
+            assert_eq!(Chunk::index_to_pos(z * 32 * 32), U8Vec3::new(0, 0, z as u8));
         }
     }
 
     #[test]
     fn pos_to_index_z() {
         for z in 0..32 {
-            assert_eq!(
-                VoxelBuffer::pos_to_index(U8Vec3::new(0, 0, z as u8)),
-                z * 32 * 32
-            );
+            assert_eq!(Chunk::pos_to_index(U8Vec3::new(0, 0, z as u8)), z * 32 * 32);
         }
     }
 
     #[test]
     fn index_to_pos_max() {
         assert_eq!(
-            VoxelBuffer::index_to_pos(CHUNK_VOXEL_COUNT - 1),
+            Chunk::index_to_pos(CHUNK_VOXEL_COUNT - 1),
             U8Vec3::new(31, 31, 31)
         );
     }
@@ -240,7 +251,7 @@ mod tests {
     #[test]
     fn pos_to_index_max() {
         assert_eq!(
-            VoxelBuffer::pos_to_index(U8Vec3::new(31, 31, 31)),
+            Chunk::pos_to_index(U8Vec3::new(31, 31, 31)),
             CHUNK_VOXEL_COUNT - 1
         );
     }
@@ -248,24 +259,24 @@ mod tests {
     #[test]
     #[should_panic(expected = "Index must be less than 32^3, got 32768")]
     fn index_to_pos_invalid() {
-        _ = VoxelBuffer::index_to_pos(CHUNK_VOXEL_COUNT)
+        _ = Chunk::index_to_pos(CHUNK_VOXEL_COUNT)
     }
 
     #[test]
     #[should_panic(expected = "x position must be less than 32, got 32")]
     fn pos_to_index_invalid_x() {
-        _ = VoxelBuffer::pos_to_index(U8Vec3::new(32, 0, 0));
+        _ = Chunk::pos_to_index(U8Vec3::new(32, 0, 0));
     }
 
     #[test]
     #[should_panic(expected = "y position must be less than 32, got 32")]
     fn pos_to_index_invalid_y() {
-        _ = VoxelBuffer::pos_to_index(U8Vec3::new(16, 32, 16));
+        _ = Chunk::pos_to_index(U8Vec3::new(16, 32, 16));
     }
 
     #[test]
     #[should_panic(expected = "z position must be less than 32, got 32")]
     fn pos_to_index_invalid_z() {
-        _ = VoxelBuffer::pos_to_index(U8Vec3::new(31, 31, 32));
+        _ = Chunk::pos_to_index(U8Vec3::new(31, 31, 32));
     }
 }
