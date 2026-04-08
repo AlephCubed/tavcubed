@@ -78,12 +78,7 @@ pub fn mesh_chunk(buffer: VoxelBuffer) -> Mesh {
     let mut indices = Vec::with_capacity(face_estimate * INDICES_PER_FACE);
     let mut packed: Vec<u32> = Vec::with_capacity(face_estimate * VERTICES_PER_FACE);
 
-    for (full_index, voxel) in buffer
-        .0
-        .iter()
-        .enumerate()
-        .filter_map(|(i, v)| v.map(|v| (i, v)))
-    {
+    for (full_index, voxel) in buffer.iter_full() {
         let pos = VoxelBuffer::index_to_pos(full_index);
 
         if pos.x == 31 || buffer[full_index + STRIDE_X].is_none() {

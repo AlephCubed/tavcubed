@@ -46,6 +46,66 @@ impl VoxelBuffer {
         ((pos.z as usize) << 10) + ((pos.y as usize) << 5) + pos.x as usize
     }
 
+    /// Returns an enumerated iterator over all non-empty voxels.
+    #[inline]
+    pub fn iter_full(&self) -> impl Iterator<Item = (usize, Voxel)> {
+        self.0
+            .iter()
+            .enumerate()
+            .filter_map(|(i, v)| v.map(|v| (i, v)))
+    }
+
+    /// Sets the value at a specific index, returning the previous value.
+    #[inline]
+    pub fn swap(&mut self, index: usize, mut voxel: Option<Voxel>) -> Option<Voxel> {
+        std::mem::swap(&mut voxel, &mut self[index]);
+        voxel
+    }
+
+    /// Sets the value at a specific position, returning the previous value.
+    #[inline]
+    pub fn swap_pos(&mut self, pos: U8Vec3, voxel: Option<Voxel>) -> Option<Voxel> {
+        self.swap(Self::pos_to_index(pos), voxel)
+    }
+
+    /// Adds a voxel at a specific index, if it is empty. Otherwise, will return `Err` with the current voxel.
+    #[inline]
+    pub fn place(&mut self, index: usize, voxel: Option<Voxel>) -> Result<(), Voxel> {
+        match self[index] {
+            None => {
+                self[index] = voxel;
+                Ok(())
+            }
+            Some(voxel) => Err(voxel),
+        }
+    }
+
+    /// Adds a voxel at a specific position, if it is empty. Otherwise, will return `Err` with the current voxel.
+    #[inline]
+    pub fn place_pos(&mut self, pos: U8Vec3, voxel: Option<Voxel>) -> Result<(), Voxel> {
+        self.place(Self::pos_to_index(pos), voxel)
+    }
+
+    /// Erases the voxel at the specified index and returns it.
+    #[inline]
+    pub fn erase(&mut self, index: usize) -> Option<Voxel> {
+        let temp = self[index];
+        self[index] = None;
+        temp
+    }
+
+    /// Erases the voxel at the specified position and returns it.
+    #[inline]
+    pub fn erase_pos(&mut self, pos: U8Vec3) -> Option<Voxel> {
+        self.erase(Self::pos_to_index(pos))
+    }
+
+    /// Removes all voxels from the buffer.
+    #[inline]
+    pub fn clear(&mut self) {
+        self.0 = [None; CHUNK_VOXEL_COUNT];
+    }
+
     pub fn checkerboard() -> Self {
         let mut chunk = Self::default();
 
