@@ -1,8 +1,9 @@
 pub mod chunk;
+pub mod player;
 
 use crate::chunk::generation::{ChunkGenerationPlugin, GenerateChunk};
 use crate::chunk::mesh::ChunkMeshPlugin;
-use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
+use bevy::camera_controller::free_camera::FreeCameraPlugin;
 use bevy::log::LogPlugin;
 use bevy::pbr::wireframe::{WireframeConfig, WireframePlugin};
 use bevy::prelude::*;
@@ -30,16 +31,6 @@ fn init_test(mut commands: Commands) {
             commands.trigger(GenerateChunk::new(ivec3(x, 0, z)));
         }
     }
-
-    commands.spawn((
-        Transform::default().with_translation(vec3(0.0, 32.0, 0.0)),
-        Camera3d::default(),
-        FreeCamera {
-            walk_speed: 20.0,
-            run_speed: 40.0,
-            ..default()
-        },
-    ));
 }
 
 fn toggle_wireframe(
