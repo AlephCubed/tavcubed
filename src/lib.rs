@@ -1,7 +1,7 @@
 pub mod chunk;
 
-use crate::chunk::mesh::{ChunkMesh, ChunkMeshPlugin};
-use crate::chunk::{Chunk, ChunkPos};
+use crate::chunk::generation::{ChunkGenerationPlugin, GenerateChunk};
+use crate::chunk::mesh::ChunkMeshPlugin;
 use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
 use bevy::log::LogPlugin;
 use bevy::pbr::wireframe::{WireframeConfig, WireframePlugin};
@@ -15,19 +15,30 @@ pub fn app() -> App {
         ..default()
     }))
     .add_plugins((FreeCameraPlugin, WireframePlugin::default()))
-    .add_plugins(ChunkMeshPlugin)
+    .add_plugins((ChunkMeshPlugin, ChunkGenerationPlugin))
     .add_systems(Startup, init_test)
     .add_systems(Update, toggle_wireframe);
 
     app
 }
 
+const RADIUS: i32 = 16;
+
 fn init_test(mut commands: Commands) {
-    let voxels = Chunk::checkerboard();
+    for x in -RADIUS..=RADIUS {
+        for z in -RADIUS..=RADIUS {
+            commands.trigger(GenerateChunk::new(ivec3(x, 0, z)));
+        }
+    }
 
-    commands.spawn((ChunkPos::default(), voxels, ChunkMesh::default()));
-
-    commands.spawn((Camera3d::default(), FreeCamera::default()));
+    commands.spawn((
+        Camera3d::default(),
+        FreeCamera {
+            walk_speed: 20.0,
+            run_speed: 40.0,
+            ..default()
+        },
+    ));
 }
 
 fn toggle_wireframe(

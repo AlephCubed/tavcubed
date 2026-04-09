@@ -1,6 +1,8 @@
+pub mod generation;
 pub mod mesh;
 pub mod voxel;
 
+use crate::chunk::mesh::ChunkMesh;
 use crate::chunk::voxel::Voxel;
 use bevy::math::U8Vec3;
 use bevy::prelude::*;
@@ -21,6 +23,7 @@ pub type Iter<'a> = core::slice::Iter<'a, Option<Voxel>>;
 pub type IterMut<'a> = core::slice::IterMut<'a, Option<Voxel>>;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[require(ChunkMesh, ChunkPos)]
 pub struct Chunk {
     buffer: VoxelBuffer,
 }
