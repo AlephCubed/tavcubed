@@ -1,9 +1,11 @@
 pub mod debug;
 mod reference;
+mod z_order_curve;
 
 pub use reference::*;
 
 use crate::debug_asset_valid_voxel_pos;
+use crate::realm::chunk::octree::z_order_curve::{pos_to_z_order, z_order_to_pos};
 use crate::realm::chunk::voxel::Voxel;
 use crate::realm::chunk::{Chunk, DIAMETER, STRIDE_X, STRIDE_Y, STRIDE_Z, VoxelBuffer};
 use bevy::math::U8Vec3;
@@ -139,21 +141,7 @@ impl Octree {
     #[inline]
     fn pos_to_leaf_index(pos: U8Vec3) -> usize {
         debug_asset_valid_voxel_pos!(pos);
-
-        let mut index = 0;
-
-        for depth in 0..OCTREE_DEPTH {
-            let children_voxel_diameter = Self::depth_voxel_diameter(depth as u32 + 1);
-
-            let cx = (pos.x as usize / children_voxel_diameter) & 1;
-            let cy = (pos.y as usize / children_voxel_diameter) & 1;
-            let cz = (pos.z as usize / children_voxel_diameter) & 1;
-            let child_index = cx | (cy << 1) | (cz << 2);
-
-            index = Self::child_index(index) + child_index;
-        }
-
-        index
+        LEAF_START + pos_to_z_order(pos / 2)
     }
 
     /// Converts a node index at any layer into the voxel position of its first (minimum corner) voxel.
@@ -168,11 +156,7 @@ impl Octree {
         let voxel_diameter = Self::depth_voxel_diameter(depth);
         let child_index = Self::depth_relative_index(index) % 8;
 
-        let local = U8Vec3::new(
-            (child_index & 1) as u8,
-            ((child_index >> 1) & 1) as u8,
-            ((child_index >> 2) & 1) as u8,
-        ) * U8Vec3::splat(voxel_diameter as u8);
+        let local = z_order_to_pos(child_index) * U8Vec3::splat(voxel_diameter as u8);
 
         Self::node_index_to_pos(Self::parent_index(index)) + local
     }
