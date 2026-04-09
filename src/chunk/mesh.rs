@@ -9,8 +9,9 @@ use crate::chunk::mesh::cube::{
 };
 use crate::chunk::mesh::material::ChunkMaterial;
 use crate::chunk::mesh::packed_data::{Facing, pack};
-use crate::chunk::{Chunk, ChunkPos, STRIDE_X, STRIDE_Y, STRIDE_Z};
+use crate::chunk::{Chunk, ChunkPos};
 use bevy::asset::RenderAssetUsages;
+use bevy::math::U8Vec3;
 use bevy::mesh::{Indices, MeshVertexAttribute, PrimitiveTopology, VertexFormat};
 use bevy::prelude::*;
 use bevy::tasks::AsyncComputeTaskPool;
@@ -84,32 +85,32 @@ pub fn mesh_chunk(chunk: Chunk) -> Mesh {
     for (full_index, voxel) in chunk.iter_full() {
         let pos = Chunk::index_to_pos(full_index);
 
-        if pos.x == 31 || chunk[full_index + STRIDE_X].is_none() {
+        if pos.x == 31 || chunk[pos + U8Vec3::X].is_none() {
             indices.extend(get_indices_pos(packed.len() as u32));
             packed.extend([pack(pos, Facing::Right, voxel); 4]);
         }
 
-        if pos.x == 0 || chunk[full_index - STRIDE_X].is_none() {
+        if pos.x == 0 || chunk[pos - U8Vec3::X].is_none() {
             indices.extend(get_indices_neg(packed.len() as u32));
             packed.extend([pack(pos, Facing::Left, voxel); 4]);
         }
 
-        if pos.y == 31 || chunk[full_index + STRIDE_Y].is_none() {
+        if pos.y == 31 || chunk[pos + U8Vec3::Y].is_none() {
             indices.extend(get_indices_pos(packed.len() as u32));
             packed.extend([pack(pos, Facing::Up, voxel); 4]);
         }
 
-        if pos.y == 0 || chunk[full_index - STRIDE_Y].is_none() {
+        if pos.y == 0 || chunk[pos - U8Vec3::Y].is_none() {
             indices.extend(get_indices_neg(packed.len() as u32));
             packed.extend([pack(pos, Facing::Down, voxel); 4]);
         }
 
-        if pos.z == 31 || chunk[full_index + STRIDE_Z].is_none() {
+        if pos.z == 31 || chunk[pos + U8Vec3::Z].is_none() {
             indices.extend(get_indices_pos(packed.len() as u32));
             packed.extend([pack(pos, Facing::Back, voxel); 4]);
         }
 
-        if pos.z == 0 || chunk[full_index - STRIDE_Z].is_none() {
+        if pos.z == 0 || chunk[pos - U8Vec3::Z].is_none() {
             indices.extend(get_indices_neg(packed.len() as u32));
             packed.extend([pack(pos, Facing::Front, voxel); 4]);
         }

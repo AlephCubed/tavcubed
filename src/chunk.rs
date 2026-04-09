@@ -1,5 +1,6 @@
 pub mod mesh;
 pub mod voxel;
+mod z_order_curve;
 
 use crate::chunk::voxel::Voxel;
 use bevy::math::U8Vec3;
@@ -11,9 +12,6 @@ use std::ops::{Index, IndexMut};
 pub struct ChunkPos(pub IVec3);
 
 pub const CHUNK_VOXEL_COUNT: usize = 32 * 32 * 32;
-pub const STRIDE_X: usize = 1;
-pub const STRIDE_Y: usize = 32;
-pub const STRIDE_Z: usize = 32 * 32;
 
 pub type VoxelBuffer = [Option<Voxel>; CHUNK_VOXEL_COUNT];
 pub type IntoIter = std::array::IntoIter<Option<Voxel>, CHUNK_VOXEL_COUNT>;
@@ -32,11 +30,7 @@ impl Chunk {
             index < CHUNK_VOXEL_COUNT,
             "Index must be less than 32^3, got {index}"
         );
-        U8Vec3 {
-            x: (index % 32) as u8,
-            y: ((index / 32) % 32) as u8,
-            z: (index / (32 * 32)) as u8,
-        }
+        z_order_curve::index_to_pos(index)
     }
 
     #[inline]
@@ -44,7 +38,7 @@ impl Chunk {
         debug_assert!(pos.x < 32, "x position must be less than 32, got {}", pos.x);
         debug_assert!(pos.y < 32, "y position must be less than 32, got {}", pos.y);
         debug_assert!(pos.z < 32, "z position must be less than 32, got {}", pos.z);
-        ((pos.z as usize) << 10) + ((pos.y as usize) << 5) + pos.x as usize
+        z_order_curve::pos_to_index(pos)
     }
 
     pub fn new(buffer: VoxelBuffer) -> Self {
@@ -197,48 +191,6 @@ impl Default for Chunk {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn index_to_pos_x() {
-        for x in 0..32 {
-            assert_eq!(Chunk::index_to_pos(x), U8Vec3::new(x as u8, 0, 0));
-        }
-    }
-
-    #[test]
-    fn pos_to_index_x() {
-        for x in 0..32 {
-            assert_eq!(Chunk::pos_to_index(U8Vec3::new(x as u8, 0, 0)), x);
-        }
-    }
-
-    #[test]
-    fn index_to_pos_y() {
-        for y in 0..32 {
-            assert_eq!(Chunk::index_to_pos(y * 32), U8Vec3::new(0, y as u8, 0));
-        }
-    }
-
-    #[test]
-    fn pos_to_index_y() {
-        for y in 0..32 {
-            assert_eq!(Chunk::pos_to_index(U8Vec3::new(0, y as u8, 0)), y * 32);
-        }
-    }
-
-    #[test]
-    fn index_to_pos_z() {
-        for z in 0..32 {
-            assert_eq!(Chunk::index_to_pos(z * 32 * 32), U8Vec3::new(0, 0, z as u8));
-        }
-    }
-
-    #[test]
-    fn pos_to_index_z() {
-        for z in 0..32 {
-            assert_eq!(Chunk::pos_to_index(U8Vec3::new(0, 0, z as u8)), z * 32 * 32);
-        }
-    }
 
     #[test]
     fn index_to_pos_max() {
