@@ -133,11 +133,11 @@ fn mesh_finished(
 ) {
     for msg in channel.receiver.try_iter() {
         let Ok((mut mesh, pos)) = chunk_meshes.get_mut(msg.chunk) else {
-            warn!("Mesh finished for deleted chunk {}", msg.chunk);
+            warn!("Mesh finished for deleted chunk with ID {}", msg.chunk);
             continue;
         };
 
-        debug!("Finished meshing {}", msg.chunk);
+        debug!("Finished meshing chunk at {} with ID {}", pos.0, msg.chunk);
 
         let handle = meshes.add(msg.mesh);
         mesh.0 = handle.clone();

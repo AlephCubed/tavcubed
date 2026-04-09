@@ -32,6 +32,7 @@ fn init_test(mut commands: Commands) {
     }
 
     commands.spawn((
+        Transform::default().with_translation(vec3(0.0, 32.0, 0.0)),
         Camera3d::default(),
         FreeCamera {
             walk_speed: 20.0,
