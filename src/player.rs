@@ -1,3 +1,4 @@
+use crate::chunk::generation::ReloadChunks;
 use bevy::camera_controller::free_camera::FreeCamera;
 use bevy::prelude::*;
 
@@ -7,7 +8,7 @@ impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, setup)
             .init_resource::<PlayerChunk>()
-            .add_systems(Update, player_chunk_changed);
+            .add_systems(PreUpdate, player_chunk_changed);
     }
 }
 
@@ -32,7 +33,8 @@ fn setup(mut commands: Commands) {
     commands.trigger(PlayerChunkChanged {
         old_chunk: chunk_pos,
         new_chunk: chunk_pos,
-    })
+    });
+    commands.trigger(ReloadChunks);
 }
 
 #[derive(Resource, Default)]
