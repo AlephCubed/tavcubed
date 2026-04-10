@@ -1,12 +1,8 @@
 //! Mesh generation for chunks.
 
-pub mod cube;
 mod material;
 mod packed_data;
 
-use crate::realm::chunk::mesh::cube::{
-    INDICES_PER_FACE, VERTICES_PER_FACE, get_indices_neg, get_indices_pos,
-};
 use crate::realm::chunk::mesh::material::ChunkMaterial;
 use crate::realm::chunk::mesh::packed_data::{Facing, pack};
 use crate::realm::chunk::{Chunk, ChunkPos, STRIDE_X, STRIDE_Y, STRIDE_Z};
@@ -26,6 +22,9 @@ impl Plugin for ChunkMeshPlugin {
             .add_plugins(MaterialPlugin::<ChunkMaterial>::default());
     }
 }
+
+pub const INDICES_PER_FACE: usize = 6;
+pub const VERTICES_PER_FACE: usize = 4;
 
 #[derive(Component, Default, Debug)]
 pub struct ChunkMesh(pub Handle<Mesh>);
@@ -146,4 +145,28 @@ fn mesh_finished(
             MeshMaterial3d(materials.add(ChunkMaterial { chunk_pos: pos.0 })),
         ));
     }
+}
+
+#[inline]
+pub const fn get_indices_pos(index: u32) -> [u32; INDICES_PER_FACE] {
+    [
+        index + 0,
+        index + 3,
+        index + 1,
+        index + 1,
+        index + 3,
+        index + 2,
+    ]
+}
+
+#[inline]
+pub const fn get_indices_neg(index: u32) -> [u32; INDICES_PER_FACE] {
+    [
+        index + 0,
+        index + 1,
+        index + 3,
+        index + 1,
+        index + 2,
+        index + 3,
+    ]
 }
