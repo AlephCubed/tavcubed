@@ -27,7 +27,7 @@ fn vertex(
 	// Unpacked quad facing dir:
 	var facing = (packed_data >> (PACKED_POS_SIZE * 3)) & PACKED_FACING_MASK;
 	
-	var voxel_pos = voxel_offset + vec3<f32>(chunk_pos) * 16;
+	var voxel_pos = voxel_offset + vec3<f32>(chunk_pos) * 32;
 	
 	var vertex_index = global_vertex_index % 4;
 	var vertex_offset = vec3<f32>(

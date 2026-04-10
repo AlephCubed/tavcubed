@@ -97,8 +97,8 @@ fn generate_perlin_chunk(mut commands: Commands, mut messages: MessageReader<Gen
             for z in 0..32 {
                 let sample: f32 = noise.sample(
                     vec2(
-                        (message.position.x * 16 + x as i32) as f32,
-                        (message.position.z * 16 + z as i32) as f32,
+                        (message.position.x * 32 + x as i32) as f32,
+                        (message.position.z * 32 + z as i32) as f32,
                     ) / RESOLUTION,
                 );
                 let height = BASE + (sample * AMPLITUDE) as u8;
