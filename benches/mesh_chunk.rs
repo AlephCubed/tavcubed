@@ -2,9 +2,9 @@
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
-use tavcubed::chunk::mesh::mesh_chunk;
-use tavcubed::chunk::voxel::Voxel;
-use tavcubed::chunk::{CHUNK_VOXEL_COUNT, Chunk};
+use tavcubed::realm::chunk::mesh::mesh_chunk;
+use tavcubed::realm::chunk::voxel::Voxel;
+use tavcubed::realm::chunk::{CHUNK_VOXEL_COUNT, Chunk};
 
 fn mesh_chunk_empty(c: &mut Criterion) {
     let chunk = Chunk::default();

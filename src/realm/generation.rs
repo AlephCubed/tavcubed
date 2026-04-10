@@ -1,6 +1,6 @@
-use crate::chunk::voxel::Voxel;
-use crate::chunk::{Chunk, ChunkPos};
 use crate::player::{PlayerChunk, PlayerChunkChanged};
+use crate::realm::chunk::voxel::Voxel;
+use crate::realm::chunk::{Chunk, ChunkPos};
 use bevy::math::u8vec3;
 use bevy::prelude::*;
 use noiz::prelude::*;

@@ -1,4 +1,4 @@
-use crate::chunk::generation::ReloadChunks;
+use crate::realm::generation::ReloadChunks;
 use bevy::camera_controller::free_camera::FreeCamera;
 use bevy::prelude::*;
 

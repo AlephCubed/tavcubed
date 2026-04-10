@@ -1,4 +1,4 @@
-use crate::chunk::mesh::ChunkMesh;
+use crate::realm::chunk::mesh::ChunkMesh;
 use bevy::mesh::MeshVertexBufferLayoutRef;
 use bevy::pbr::{MaterialPipeline, MaterialPipelineKey};
 use bevy::prelude::*;

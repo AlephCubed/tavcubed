@@ -1,4 +1,4 @@
-use crate::chunk::voxel::Voxel;
+use crate::realm::chunk::voxel::Voxel;
 use bevy::math::U8Vec3;
 
 #[inline]

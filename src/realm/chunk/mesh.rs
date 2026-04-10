@@ -4,12 +4,12 @@ pub mod cube;
 mod material;
 mod packed_data;
 
-use crate::chunk::mesh::cube::{
+use crate::realm::chunk::mesh::cube::{
     INDICES_PER_FACE, VERTICES_PER_FACE, get_indices_neg, get_indices_pos,
 };
-use crate::chunk::mesh::material::ChunkMaterial;
-use crate::chunk::mesh::packed_data::{Facing, pack};
-use crate::chunk::{Chunk, ChunkPos, STRIDE_X, STRIDE_Y, STRIDE_Z};
+use crate::realm::chunk::mesh::material::ChunkMaterial;
+use crate::realm::chunk::mesh::packed_data::{Facing, pack};
+use crate::realm::chunk::{Chunk, ChunkPos, STRIDE_X, STRIDE_Y, STRIDE_Z};
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, MeshVertexAttribute, PrimitiveTopology, VertexFormat};
 use bevy::prelude::*;

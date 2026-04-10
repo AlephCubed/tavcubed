@@ -1,13 +1,13 @@
-pub mod chunk;
 pub mod player;
+pub mod realm;
 
-use crate::chunk::generation::ChunkGenerationPlugin;
-use crate::chunk::mesh::ChunkMeshPlugin;
 use crate::player::PlayerPlugin;
 use bevy::camera_controller::free_camera::FreeCameraPlugin;
 use bevy::log::LogPlugin;
 use bevy::pbr::wireframe::{WireframeConfig, WireframePlugin};
 use bevy::prelude::*;
+use realm::chunk::mesh::ChunkMeshPlugin;
+use realm::generation::ChunkGenerationPlugin;
 
 pub fn app() -> App {
     let mut app = App::new();

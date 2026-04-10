@@ -1,9 +1,8 @@
-pub mod generation;
 pub mod mesh;
 pub mod voxel;
 
-use crate::chunk::mesh::ChunkMesh;
-use crate::chunk::voxel::Voxel;
+use crate::realm::chunk::mesh::ChunkMesh;
+use crate::realm::chunk::voxel::Voxel;
 use bevy::math::U8Vec3;
 use bevy::prelude::*;
 use std::fmt::Formatter;
