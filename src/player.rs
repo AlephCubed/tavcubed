@@ -15,10 +15,11 @@ impl Plugin for PlayerPlugin {
 pub struct Player;
 
 fn setup(mut commands: Commands) {
+    let translation = vec3(0.0, 32.0, 0.0);
     commands.spawn((
         Player,
         Name::new("Player"),
-        Transform::default().with_translation(vec3(0.0, 32.0, 0.0)),
+        Transform::default().with_translation(translation),
         Camera3d::default(),
         FreeCamera {
             walk_speed: 20.0,
@@ -26,11 +27,27 @@ fn setup(mut commands: Commands) {
             ..default()
         },
     ));
+
+    let chunk_pos = PlayerChunk::translation_to_chunk_pos(translation);
+    commands.trigger(PlayerChunkChanged {
+        old_chunk: chunk_pos,
+        new_chunk: chunk_pos,
+    })
 }
 
 #[derive(Resource, Default)]
 pub struct PlayerChunk {
     pub pos: IVec3,
+}
+
+impl PlayerChunk {
+    pub fn translation_to_chunk_pos(translation: Vec3) -> IVec3 {
+        IVec3 {
+            x: translation.x as i32 / 32,
+            y: translation.y as i32 / 32,
+            z: translation.z as i32 / 32,
+        }
+    }
 }
 
 #[derive(Event, Eq, PartialEq, Clone, Copy)]
@@ -44,17 +61,15 @@ fn player_chunk_changed(
     mut chunk: ResMut<PlayerChunk>,
     player: Single<&Transform, (With<Player>, Changed<Transform>)>,
 ) {
-    let pos = IVec3 {
-        x: player.translation.x as i32 / 32,
-        y: player.translation.y as i32 / 32,
-        z: player.translation.z as i32 / 32,
-    };
+    let pos = PlayerChunk::translation_to_chunk_pos(player.translation);
 
     if chunk.pos != pos {
         commands.trigger(PlayerChunkChanged {
             old_chunk: chunk.pos,
             new_chunk: pos,
         });
+
+        debug!("Player now in chunk {pos}");
 
         chunk.pos = pos;
     }
