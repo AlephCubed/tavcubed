@@ -154,6 +154,8 @@ fn reload_chunks(
     mut loaded_chunks: ResMut<LoadedChunks>,
     mut messages: MessageWriter<GenerateChunk>,
 ) {
+    info!("Reloading chunks");
+
     for x in -RADIUS..=RADIUS {
         for y in -RADIUS..=RADIUS {
             for z in -RADIUS..=RADIUS {
