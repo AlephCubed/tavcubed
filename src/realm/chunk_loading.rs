@@ -1,16 +1,65 @@
 use crate::player::{PlayerChunk, PlayerChunkChanged};
 use crate::realm::generation::GenerateChunk;
+use bevy::math::U8Vec3;
 use bevy::prelude::*;
 
 pub const RADIUS: i32 = 16;
+pub const DIAMETER: i32 = RADIUS * 2;
+pub const BUFFER_DIAMETER: usize = DIAMETER as usize + 1;
+
+pub const BUFFER_SIZE: usize = BUFFER_DIAMETER * BUFFER_DIAMETER * BUFFER_DIAMETER;
+pub const STRIDE_X: usize = 1;
+pub const STRIDE_Y: usize = BUFFER_DIAMETER;
+pub const STRIDE_Z: usize = BUFFER_DIAMETER * BUFFER_DIAMETER;
 
 pub struct ChunkLoadingPlugin;
 
 impl Plugin for ChunkLoadingPlugin {
     fn build(&self, app: &mut App) {
-        app.add_observer(generate_nearby_chunks)
+        app.init_resource::<LoadedChunks>()
+            .add_observer(generate_nearby_chunks)
             .add_observer(reload_chunks);
     }
+}
+
+pub type ChunkBuffer = [ChunkRef; BUFFER_SIZE];
+
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct LoadedChunks {
+    buffer: ChunkBuffer,
+    /// The position in chunk-space of the center of the loaded area.
+    chunk_center: IVec3,
+    /// The index in buffer-space of the center of the loaded area.
+    buffer_center: usize,
+}
+
+impl LoadedChunks {
+    /// Converts a buffer index to an absolute position.
+    #[inline]
+    fn index_to_abs_pos(mut index: usize) -> U8Vec3 {
+        index %= BUFFER_SIZE;
+        U8Vec3 {
+            x: (index % STRIDE_Y) as u8,
+            y: ((index / STRIDE_Y) % STRIDE_Y) as u8,
+            z: (index / STRIDE_Z) as u8,
+        }
+    }
+
+    /// Converts a buffer position to an absolute index.
+    #[inline]
+    fn pos_to_abs_index(pos: IVec3) -> usize {
+        let x = pos.x.rem_euclid(BUFFER_DIAMETER as i32) as usize * STRIDE_X;
+        let y = pos.y.rem_euclid(BUFFER_DIAMETER as i32) as usize * STRIDE_Y;
+        let z = pos.z.rem_euclid(BUFFER_DIAMETER as i32) as usize * STRIDE_Z;
+        z + y + x
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ChunkRef {
+    None,
+    Empty(Entity),
+    Some(Entity),
 }
 
 #[derive(Event, Default, Clone, Copy)]
@@ -58,5 +107,93 @@ fn generate_nearby_chunks(
                 messages.write(GenerateChunk::new(pos));
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const MIN: i32 = -10;
+    const MAX: i32 = 10;
+
+    #[test]
+    fn index_to_abs_pos_x() {
+        for x in 0..DIAMETER {
+            assert_eq!(
+                LoadedChunks::index_to_abs_pos(x as usize),
+                U8Vec3::new(x as u8, 0, 0)
+            );
+        }
+    }
+
+    #[test]
+    fn pos_to_abs_index_x() {
+        for x in MIN..MAX {
+            assert_eq!(
+                LoadedChunks::pos_to_abs_index(IVec3::new(x, 0, 0)),
+                x.rem_euclid(STRIDE_Y as i32) as usize,
+            );
+        }
+    }
+
+    #[test]
+    fn index_to_abs_pos_y() {
+        for y in 0..DIAMETER {
+            assert_eq!(
+                LoadedChunks::index_to_abs_pos(y as usize * STRIDE_Y),
+                U8Vec3::new(0, y as u8, 0)
+            );
+        }
+    }
+
+    #[test]
+    fn pos_to_abs_index_y() {
+        for y in MIN..MAX {
+            assert_eq!(
+                LoadedChunks::pos_to_abs_index(IVec3::new(0, y, 0)),
+                (y * STRIDE_Y as i32).rem_euclid(STRIDE_Z as i32) as usize,
+            );
+        }
+    }
+
+    #[test]
+    fn index_to_abs_pos_z() {
+        for z in 0..DIAMETER {
+            assert_eq!(
+                LoadedChunks::index_to_abs_pos(z as usize * STRIDE_Z),
+                U8Vec3::new(0, 0, z as u8)
+            );
+        }
+    }
+
+    #[test]
+    fn pos_to_abs_index_z() {
+        for z in MIN..MAX {
+            assert_eq!(
+                LoadedChunks::pos_to_abs_index(IVec3::new(0, 0, z)),
+                (z * STRIDE_Z as i32).rem_euclid(BUFFER_SIZE as i32) as usize,
+            );
+        }
+    }
+
+    #[test]
+    fn index_to_abs_pos_max() {
+        assert_eq!(
+            LoadedChunks::index_to_abs_pos(BUFFER_SIZE - 1),
+            U8Vec3::new(
+                BUFFER_DIAMETER as u8 - 1,
+                BUFFER_DIAMETER as u8 - 1,
+                BUFFER_DIAMETER as u8 - 1,
+            )
+        );
+    }
+
+    #[test]
+    fn index_to_abs_pos_wrap() {
+        assert_eq!(
+            LoadedChunks::index_to_abs_pos(BUFFER_SIZE),
+            U8Vec3::new(0, 0, 0)
+        );
     }
 }

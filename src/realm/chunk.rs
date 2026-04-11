@@ -11,10 +11,12 @@ use std::ops::{Index, IndexMut};
 #[derive(Component, Deref, Default, Debug, Eq, PartialEq, Clone, Copy)]
 pub struct ChunkPos(pub IVec3);
 
-pub const CHUNK_VOXEL_COUNT: usize = 32 * 32 * 32;
+pub const DIAMETER: usize = 32;
+
+pub const CHUNK_VOXEL_COUNT: usize = DIAMETER * DIAMETER * DIAMETER;
 pub const STRIDE_X: usize = 1;
-pub const STRIDE_Y: usize = 32;
-pub const STRIDE_Z: usize = 32 * 32;
+pub const STRIDE_Y: usize = DIAMETER;
+pub const STRIDE_Z: usize = DIAMETER * DIAMETER;
 
 pub type VoxelBuffer = [Option<Voxel>; CHUNK_VOXEL_COUNT];
 pub type IntoIter = std::array::IntoIter<Option<Voxel>, CHUNK_VOXEL_COUNT>;
@@ -29,24 +31,36 @@ pub struct Chunk {
 
 impl Chunk {
     #[inline]
-    pub fn index_to_pos(index: usize) -> U8Vec3 {
+    fn index_to_pos(index: usize) -> U8Vec3 {
         debug_assert!(
             index < CHUNK_VOXEL_COUNT,
-            "Index must be less than 32^3, got {index}"
+            "Index must be less than {CHUNK_VOXEL_COUNT}, got {index}"
         );
         U8Vec3 {
-            x: (index % 32) as u8,
-            y: ((index / 32) % 32) as u8,
-            z: (index / (32 * 32)) as u8,
+            x: (index % STRIDE_Y) as u8,
+            y: ((index / STRIDE_Y) % STRIDE_Y) as u8,
+            z: (index / STRIDE_Z) as u8,
         }
     }
 
     #[inline]
-    pub fn pos_to_index(pos: U8Vec3) -> usize {
-        debug_assert!(pos.x < 32, "x position must be less than 32, got {}", pos.x);
-        debug_assert!(pos.y < 32, "y position must be less than 32, got {}", pos.y);
-        debug_assert!(pos.z < 32, "z position must be less than 32, got {}", pos.z);
-        ((pos.z as usize) << 10) + ((pos.y as usize) << 5) + pos.x as usize
+    fn pos_to_index(pos: U8Vec3) -> usize {
+        debug_assert!(
+            pos.x < DIAMETER as u8,
+            "x position must be less than {DIAMETER}, got {}",
+            pos.x
+        );
+        debug_assert!(
+            pos.y < DIAMETER as u8,
+            "y position must be less than {DIAMETER}, got {}",
+            pos.y
+        );
+        debug_assert!(
+            pos.z < DIAMETER as u8,
+            "z position must be less than {DIAMETER}, got {}",
+            pos.z
+        );
+        (pos.z as usize * STRIDE_Z) + (pos.y as usize * STRIDE_Y) + pos.x as usize
     }
 
     pub fn new(buffer: VoxelBuffer) -> Self {
@@ -259,7 +273,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Index must be less than 32^3, got 32768")]
+    #[should_panic(expected = "Index must be less than 32768, got 32768")]
     fn index_to_pos_invalid() {
         _ = Chunk::index_to_pos(CHUNK_VOXEL_COUNT)
     }
