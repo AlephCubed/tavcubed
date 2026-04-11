@@ -7,6 +7,8 @@ use crate::realm::chunk::mesh::material::ChunkMaterial;
 use crate::realm::chunk::mesh::packed_data::{Facing, pack};
 use crate::realm::chunk::{Chunk, ChunkPos, STRIDE_X, STRIDE_Y, STRIDE_Z};
 use bevy::asset::RenderAssetUsages;
+use bevy::ecs::bundle::InsertMode;
+use bevy::ecs::system::entity_command::insert;
 use bevy::mesh::{Indices, MeshVertexAttribute, PrimitiveTopology, VertexFormat};
 use bevy::prelude::*;
 use bevy::tasks::AsyncComputeTaskPool;
@@ -62,10 +64,9 @@ fn mesh_changed_chunks(
         let chunk = *chunk;
 
         pool.spawn(async move {
-            let mesh = mesh_chunk(chunk);
-            let _ = sender.send(ChunkMeshFinished {
+            _ = sender.send(ChunkMeshFinished {
                 chunk: entity,
-                mesh,
+                mesh: mesh_chunk(chunk),
             });
         })
         .detach();
@@ -140,10 +141,18 @@ fn mesh_finished(
 
         let handle = meshes.add(msg.mesh);
         mesh.0 = handle.clone();
-        commands.entity(msg.chunk).insert((
-            Mesh3d(handle),
-            MeshMaterial3d(materials.add(ChunkMaterial { chunk_pos: pos.0 })),
-        ));
+        commands.entity(msg.chunk).queue_handled(
+            insert(
+                (
+                    Mesh3d(handle),
+                    MeshMaterial3d(materials.add(ChunkMaterial { chunk_pos: pos.0 })),
+                ),
+                InsertMode::Replace,
+            ),
+            |_error, _ctx| {
+                error!("Unable to insert new mesh!");
+            },
+        );
     }
 }
 
