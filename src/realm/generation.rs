@@ -33,6 +33,7 @@ const AMPLITUDE: f32 = 8.0;
 fn generate_perlin_chunk(mut commands: Commands, mut messages: MessageReader<GenerateChunk>) {
     for message in messages.read() {
         if message.position.y != 0 {
+            commands.spawn(ChunkPos(message.position));
             continue;
         }
 

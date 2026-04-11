@@ -1,4 +1,5 @@
 use crate::player::{PlayerChunk, PlayerChunkChanged};
+use crate::realm::chunk::{Chunk, ChunkPos};
 use crate::realm::generation::GenerateChunk;
 use bevy::math::U8Vec3;
 use bevy::prelude::*;
@@ -19,7 +20,8 @@ impl Plugin for ChunkLoadingPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<LoadedChunks>()
             .add_observer(generate_nearby_chunks)
-            .add_observer(reload_chunks);
+            .add_observer(reload_chunks)
+            .add_observer(on_add_chunk);
     }
 }
 
@@ -118,8 +120,27 @@ impl IntoIterator for LoadedChunks {
 pub enum ChunkRef {
     #[default]
     None,
+    Generating,
     Empty(Entity),
     Some(Entity),
+}
+
+impl From<Option<Entity>> for ChunkRef {
+    fn from(value: Option<Entity>) -> Self {
+        match value {
+            None => Self::None,
+            Some(entity) => Self::Some(entity),
+        }
+    }
+}
+
+impl From<ChunkRef> for Option<Entity> {
+    fn from(value: ChunkRef) -> Self {
+        match value {
+            ChunkRef::None | ChunkRef::Generating => None,
+            ChunkRef::Empty(entity) | ChunkRef::Some(entity) => Some(entity),
+        }
+    }
 }
 
 #[derive(Event, Default, Clone, Copy)]
@@ -128,13 +149,24 @@ pub struct ReloadChunks;
 /// Generates all chunks in a radius around the player.
 fn reload_chunks(
     _event: On<ReloadChunks>,
+    mut commands: Commands,
     player_chunk: Res<PlayerChunk>,
+    mut loaded_chunks: ResMut<LoadedChunks>,
     mut messages: MessageWriter<GenerateChunk>,
 ) {
     for x in -RADIUS..=RADIUS {
         for y in -RADIUS..=RADIUS {
             for z in -RADIUS..=RADIUS {
-                messages.write(GenerateChunk::new(player_chunk.pos + ivec3(x, y, z)));
+                let pos = player_chunk.pos + ivec3(x, y, z);
+
+                match loaded_chunks[pos] {
+                    ChunkRef::None => {}
+                    ChunkRef::Generating => continue,
+                    ChunkRef::Empty(e) | ChunkRef::Some(e) => commands.entity(e).despawn(),
+                }
+
+                loaded_chunks[pos] = ChunkRef::Generating;
+                messages.write(GenerateChunk::new(pos));
             }
         }
     }
@@ -143,6 +175,8 @@ fn reload_chunks(
 /// Generates all new chunks when the player moves between chunk-borders.
 fn generate_nearby_chunks(
     event: On<PlayerChunkChanged>,
+    mut commands: Commands,
+    mut loaded_chunks: ResMut<LoadedChunks>,
     mut messages: MessageWriter<GenerateChunk>,
 ) {
     let diff = event.new_chunk - event.old_chunk;
@@ -164,9 +198,32 @@ fn generate_nearby_chunks(
                     2 => IVec3::new(new.x + a, new.y + b, slab_coord),
                     _ => unreachable!(),
                 };
+
+                match loaded_chunks[pos] {
+                    ChunkRef::None => {}
+                    ChunkRef::Generating => continue,
+                    ChunkRef::Empty(e) | ChunkRef::Some(e) => commands.entity(e).despawn(),
+                }
+
+                loaded_chunks[pos] = ChunkRef::Generating;
                 messages.write(GenerateChunk::new(pos));
             }
         }
+    }
+}
+
+fn on_add_chunk(
+    event: On<Add, (ChunkPos, Chunk)>,
+    mut loaded_chunks: ResMut<LoadedChunks>,
+    chunks: Query<(&ChunkPos, Has<Chunk>)>,
+) {
+    let Ok((pos, chunk)) = chunks.get(event.entity) else {
+        return;
+    };
+
+    match chunk {
+        true => loaded_chunks[pos.0] = ChunkRef::Some(event.entity),
+        false => loaded_chunks[pos.0] = ChunkRef::Empty(event.entity),
     }
 }
 
