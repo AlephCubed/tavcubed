@@ -57,7 +57,7 @@ fn mesh_changed_chunks(
     for (entity, chunk) in &chunks {
         let sender = channel.sender.clone();
 
-        debug!("Meshing {entity}");
+        trace!("Meshing {entity}");
 
         let chunk = *chunk;
 
@@ -136,7 +136,7 @@ fn mesh_finished(
             continue;
         };
 
-        debug!("Finished meshing chunk at {} with ID {}", pos.0, msg.chunk);
+        trace!("Finished meshing chunk at {} with ID {}", pos.0, msg.chunk);
 
         let handle = meshes.add(msg.mesh);
         mesh.0 = handle.clone();
