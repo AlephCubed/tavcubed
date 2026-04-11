@@ -3,6 +3,7 @@ use crate::realm::chunk::{Chunk, ChunkPos};
 use crate::realm::generation::GenerateChunk;
 use bevy::math::U8Vec3;
 use bevy::prelude::*;
+use std::fmt::Formatter;
 use std::ops::{Index, IndexMut};
 
 pub const RADIUS: i32 = 16;
@@ -116,6 +117,24 @@ impl IntoIterator for LoadedChunks {
     }
 }
 
+impl std::fmt::Display for LoadedChunks {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for y in 0..BUFFER_DIAMETER {
+            writeln!(f, "y: {y}")?;
+            for x in 0..BUFFER_DIAMETER {
+                write!(f, "\t")?;
+                for z in 0..BUFFER_DIAMETER {
+                    write!(f, "{}", self[ivec3(x as i32, y as i32, z as i32)])?;
+                }
+                write!(f, "\n")?;
+            }
+            writeln!(f)?;
+        }
+
+        Ok(())
+    }
+}
+
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ChunkRef {
     #[default]
@@ -139,6 +158,17 @@ impl From<ChunkRef> for Option<Entity> {
         match value {
             ChunkRef::None | ChunkRef::Generating => None,
             ChunkRef::Empty(entity) | ChunkRef::Some(entity) => Some(entity),
+        }
+    }
+}
+
+impl std::fmt::Display for ChunkRef {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ChunkRef::None => write!(f, "o"),
+            ChunkRef::Generating => write!(f, "-"),
+            ChunkRef::Empty(_) => write!(f, "."),
+            ChunkRef::Some(_) => write!(f, "#"),
         }
     }
 }
