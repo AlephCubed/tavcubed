@@ -2,6 +2,7 @@ pub mod player;
 pub mod realm;
 
 use crate::player::PlayerPlugin;
+use crate::realm::chunk_loading::ChunkLoadingPlugin;
 use bevy::camera_controller::free_camera::FreeCameraPlugin;
 use bevy::log::LogPlugin;
 use bevy::pbr::wireframe::{WireframeConfig, WireframePlugin};
@@ -17,7 +18,12 @@ pub fn app() -> App {
         ..default()
     }))
     .add_plugins((FreeCameraPlugin, WireframePlugin::default()))
-    .add_plugins((PlayerPlugin, ChunkMeshPlugin, ChunkGenerationPlugin))
+    .add_plugins((
+        PlayerPlugin,
+        ChunkMeshPlugin,
+        ChunkLoadingPlugin,
+        ChunkGenerationPlugin,
+    ))
     .add_systems(Update, toggle_wireframe);
 
     app
