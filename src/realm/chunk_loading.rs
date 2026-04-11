@@ -2,6 +2,7 @@ use crate::player::{PlayerChunk, PlayerChunkChanged};
 use crate::realm::generation::GenerateChunk;
 use bevy::math::U8Vec3;
 use bevy::prelude::*;
+use std::ops::{Index, IndexMut};
 
 pub const RADIUS: i32 = 16;
 pub const DIAMETER: i32 = RADIUS * 2;
@@ -23,6 +24,9 @@ impl Plugin for ChunkLoadingPlugin {
 }
 
 pub type ChunkBuffer = [ChunkRef; BUFFER_SIZE];
+pub type IntoIter = std::array::IntoIter<ChunkRef, BUFFER_SIZE>;
+pub type Iter<'a> = core::slice::Iter<'a, ChunkRef>;
+pub type IterMut<'a> = core::slice::IterMut<'a, ChunkRef>;
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LoadedChunks {
@@ -53,10 +57,66 @@ impl LoadedChunks {
         let z = pos.z.rem_euclid(BUFFER_DIAMETER as i32) as usize * STRIDE_Z;
         z + y + x
     }
+
+    pub fn iter(&'_ self) -> Iter<'_> {
+        self.buffer.iter()
+    }
+
+    pub fn iter_mut(&'_ mut self) -> IterMut<'_> {
+        self.buffer.iter_mut()
+    }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+impl Default for LoadedChunks {
+    fn default() -> Self {
+        Self {
+            buffer: [ChunkRef::default(); BUFFER_SIZE],
+            chunk_center: IVec3::default(),
+            buffer_center: 0,
+        }
+    }
+}
+
+impl Index<usize> for LoadedChunks {
+    type Output = ChunkRef;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.buffer[index % BUFFER_DIAMETER]
+    }
+}
+
+impl IndexMut<usize> for LoadedChunks {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.buffer[index % BUFFER_SIZE]
+    }
+}
+
+impl Index<IVec3> for LoadedChunks {
+    type Output = ChunkRef;
+
+    fn index(&self, pos: IVec3) -> &Self::Output {
+        &self.buffer[Self::pos_to_abs_index(pos)]
+    }
+}
+
+impl IndexMut<IVec3> for LoadedChunks {
+    fn index_mut(&mut self, pos: IVec3) -> &mut Self::Output {
+        &mut self.buffer[Self::pos_to_abs_index(pos)]
+    }
+}
+
+impl IntoIterator for LoadedChunks {
+    type Item = ChunkRef;
+    type IntoIter = IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.buffer.into_iter()
+    }
+}
+
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ChunkRef {
+    #[default]
     None,
     Empty(Entity),
     Some(Entity),
