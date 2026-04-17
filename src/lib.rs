@@ -2,6 +2,7 @@ pub mod player;
 pub mod realm;
 
 use crate::player::PlayerPlugin;
+use crate::realm::block_registry::BlockRegistryPlugin;
 use crate::realm::chunk_loading::{ChunkLoadingPlugin, ReloadChunks};
 use bevy::camera_controller::free_camera::FreeCameraPlugin;
 use bevy::log::LogPlugin;
@@ -23,6 +24,7 @@ pub fn app() -> App {
         ChunkMeshPlugin,
         ChunkLoadingPlugin,
         ChunkGenerationPlugin,
+        BlockRegistryPlugin,
     ))
     .add_systems(Update, debug_keybinds);
 

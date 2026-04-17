@@ -1,9 +1,42 @@
 use bevy::prelude::*;
+use bevy::reflect::erased_serde::__private::serde::Deserializer;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Formatter;
 use std::num::NonZeroU8;
 use std::ops::Index;
 use std::str::FromStr;
+
+pub struct BlockRegistryPlugin;
+
+impl Plugin for BlockRegistryPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<BlockRegistry>()
+            .add_systems(Startup, load_core_blocks);
+    }
+}
+
+const BLOCK_DATA_DIR: &str = "assets/blocks";
+
+fn load_core_blocks(mut registry: ResMut<BlockRegistry>) {
+    info!("Loading core blocks");
+
+    for entry in std::fs::read_dir(BLOCK_DATA_DIR).unwrap() {
+        let entry = entry.unwrap();
+        let path = entry.path();
+
+        if !path.is_file() || path.extension().and_then(|e| e.to_str()) != Some("toml") {
+            continue;
+        }
+
+        let content = std::fs::read_to_string(&path).unwrap();
+        let block: Block = toml::from_str(&content).unwrap();
+
+        debug!("Loading block {}", block.id);
+
+        registry.register(block);
+    }
+}
 
 /// Maps [block](BlockId) and [voxel](VoxelId) IDs to [block data](Block).
 #[derive(Resource, Default, Debug)]
@@ -95,7 +128,7 @@ impl VoxelId {
 /// and is constant across sessions.
 ///
 /// See [`VoxelId`] for the block's unstable ID.
-#[derive(Deref, Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Serialize, Deref, Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct BlockId(String);
 
 impl BlockId {
@@ -135,6 +168,13 @@ impl BlockId {
     /// Returns the block portion of the block ID.
     pub fn block_id(&self) -> &str {
         &self.split().1
+    }
+}
+
+impl<'de> Deserialize<'de> for BlockId {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        s.parse().map_err(serde::de::Error::custom)
     }
 }
 
@@ -184,7 +224,7 @@ impl std::fmt::Display for BlockIdError {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Block {
     id: BlockId,
     pub name: String,
