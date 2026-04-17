@@ -1,12 +1,7 @@
-use std::num::NonZeroU8;
+use crate::realm::block_registry::VoxelId;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+
 pub struct Voxel {
-    pub id: NonZeroU8,
-}
-
-impl Default for Voxel {
-    fn default() -> Self {
-        Self { id: NonZeroU8::MIN }
-    }
+    pub id: VoxelId,
 }

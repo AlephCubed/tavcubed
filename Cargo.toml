@@ -13,6 +13,8 @@ log = { version = "0.4", features = [
   "release_max_level_warn",
 ] }
 noiz = "0.4"
+serde = "1.0"
+toml = "1.1"
 tracing = { version = "0.1", features = [
   "max_level_debug",
   "release_max_level_warn",
