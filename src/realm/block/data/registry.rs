@@ -4,28 +4,6 @@ use bevy::prelude::*;
 use std::collections::HashMap;
 use std::ops::Index;
 
-const BLOCK_DATA_DIR: &str = "assets/blocks";
-
-pub(super) fn load_core_blocks(mut registry: ResMut<BlockRegistry>) {
-    info!("Loading core blocks");
-
-    for entry in std::fs::read_dir(BLOCK_DATA_DIR).unwrap() {
-        let entry = entry.unwrap();
-        let path = entry.path();
-
-        if !path.is_file() || path.extension().and_then(|e| e.to_str()) != Some("toml") {
-            continue;
-        }
-
-        let content = std::fs::read_to_string(&path).unwrap();
-        let block: Block = toml::from_str(&content).unwrap();
-
-        debug!("Loading block {}", block.id());
-
-        registry.register(block);
-    }
-}
-
 /// Maps [block](BlockId) and [voxel](VoxelId) IDs to [block data](Block).
 #[derive(Resource, Default, Debug)]
 pub struct BlockRegistry {

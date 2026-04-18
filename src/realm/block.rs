@@ -1,8 +1,8 @@
 pub mod data;
-pub mod registry;
 
-use crate::realm::block::registry::{BlockRegistry, load_core_blocks};
+use crate::realm::block::data::load::load_core_blocks;
 use bevy::prelude::*;
+use data::registry::BlockRegistry;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt::Formatter;
 use std::num::NonZeroU8;
