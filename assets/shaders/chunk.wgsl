@@ -2,6 +2,9 @@
 
 @group(#{MATERIAL_BIND_GROUP}) @binding(0) var<uniform> chunk_pos: vec3<i32>;
 
+@group(#{MATERIAL_BIND_GROUP}) @binding(1) var array_texture: texture_2d_array<f32>;
+@group(#{MATERIAL_BIND_GROUP}) @binding(2) var array_texture_sampler: sampler;
+
 const PACKED_POS_SIZE: u32 = 5;
 const PACKED_POS_MASK: u32 = (1 << PACKED_POS_SIZE) - 1; // 0b11111
 
@@ -10,7 +13,8 @@ const PACKED_FACING_MASK: u32 = (1 << PACKED_FACING_SIZE) - 1; // 0b111
 
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
-    @location(0) color: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+    @location(1) layer: u32,
 };
 
 @vertex
@@ -26,6 +30,8 @@ fn vertex(
 	);
 	// Unpacked quad facing dir:
 	var facing = (packed_data >> (PACKED_POS_SIZE * 3)) & PACKED_FACING_MASK;
+	// Unpacked texture ID:
+	var texture = packed_data >> (PACKED_POS_SIZE * 3 + PACKED_FACING_SIZE);
 	
 	var voxel_pos = voxel_offset + vec3<f32>(chunk_pos) * 32;
 	
@@ -55,35 +61,13 @@ fn vertex(
 	
 	var out: VertexOutput;
 	out.position = view.clip_from_world * vec4(vertex_pos, 1.0);
-	
-	switch (facing) {
-		case 0: {
-			out.color = vec4<f32>(1, 1, 1, 1);
-		}
-		case 1: {
-			out.color = vec4<f32>(0, 0, 0, 1);
-		}
-		case 2: {
-			out.color = vec4<f32>(1, 0, 0, 1);
-		}
-		case 3: {
-			out.color = vec4<f32>(1, 0, 1, 1);
-		}
-		case 4: {
-			out.color = vec4<f32>(0, 1, 0, 1);
-		}
-		case 5: {
-			out.color = vec4<f32>(0, 0, 1, 1);
-		}
-		default: {
-			out.color = vec4<f32>(1, 1, 0, 1);
-		}
-	}
+	out.uv = vertex_offset.xz;
+	out.layer = texture;
 	
 	return out;
 }
 
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
-    return in.color;
+    return textureSample(array_texture, array_texture_sampler, in.uv, in.layer);
 }

@@ -11,6 +11,9 @@ use bevy::shader::ShaderRef;
 pub struct ChunkMaterial {
     #[uniform(0)]
     pub chunk_pos: IVec3,
+    #[texture(1, dimension = "2d_array")]
+    #[sampler(2)]
+    pub texture_array: Handle<Image>,
 }
 
 impl ChunkMaterial {

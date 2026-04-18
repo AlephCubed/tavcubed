@@ -3,15 +3,27 @@ use crate::realm::block::{BlockId, VoxelId};
 use bevy::prelude::*;
 use std::collections::HashMap;
 use std::ops::Index;
+use std::sync::Arc;
 
 /// Maps [block](BlockId) and [voxel](VoxelId) IDs to [block data](Block).
-#[derive(Resource, Default, Debug)]
-pub struct BlockRegistry {
-    blocks: Vec<Block>,
-    id_map: HashMap<BlockId, VoxelId>,
-}
+#[derive(Resource, Deref, DerefMut, Default)]
+pub struct BlockRegistry(pub Arc<BlockRegistryInner>);
 
 impl BlockRegistry {
+    pub fn new(inner: BlockRegistryInner) -> Self {
+        Self(Arc::new(inner))
+    }
+}
+
+/// Maps [block](BlockId) and [voxel](VoxelId) IDs to [block data](Block).
+#[derive(Default, Debug)]
+pub struct BlockRegistryInner {
+    blocks: Vec<Block>,
+    id_map: HashMap<BlockId, VoxelId>,
+    pub textures: Option<Handle<Image>>,
+}
+
+impl BlockRegistryInner {
     /// Registers a new block, returning its unstable [`VoxelId`].
     pub fn register(&mut self, block: Block) -> VoxelId {
         let block_id = block.id().clone();
@@ -54,7 +66,7 @@ impl BlockRegistry {
     }
 }
 
-impl Index<BlockId> for BlockRegistry {
+impl Index<BlockId> for BlockRegistryInner {
     type Output = Block;
 
     fn index(&self, index: BlockId) -> &Self::Output {
@@ -63,7 +75,7 @@ impl Index<BlockId> for BlockRegistry {
     }
 }
 
-impl Index<VoxelId> for BlockRegistry {
+impl Index<VoxelId> for BlockRegistryInner {
     type Output = Block;
 
     fn index(&self, index: VoxelId) -> &Self::Output {

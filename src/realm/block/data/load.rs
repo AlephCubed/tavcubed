@@ -1,13 +1,15 @@
-use crate::realm::block::data::registry::BlockRegistry;
+use crate::realm::block::data::registry::{BlockRegistry, BlockRegistryInner};
 use crate::realm::block::data::{Block, BlockData, BlockTexture, BlockTextureData};
 use bevy::asset::RenderAssetUsages;
 use bevy::prelude::*;
-use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
+use bevy::render::render_resource::{
+    Extent3d, TextureDimension, TextureFormat, TextureViewDescriptor, TextureViewDimension,
+};
 use std::collections::HashMap;
 
 const CORE_BLOCK_DATA_DIR: &str = "assets/blocks";
 
-pub fn load_core_blocks(mut registry: ResMut<BlockRegistry>, mut images: ResMut<Assets<Image>>) {
+pub fn load_core_blocks(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
     info!("Loading core blocks");
 
     // Deserialize block configs.
@@ -38,17 +40,17 @@ pub fn load_core_blocks(mut registry: ResMut<BlockRegistry>, mut images: ResMut<
             BlockTextureData::PerFace {
                 top,
                 bottom,
-                left,
                 right,
-                front,
+                left,
                 back,
+                front,
             } => BlockTexture::PerFace {
                 top: texture_map.resolve(top),
                 bottom: texture_map.resolve(bottom),
-                left: texture_map.resolve(left),
                 right: texture_map.resolve(right),
-                front: texture_map.resolve(front),
+                left: texture_map.resolve(left),
                 back: texture_map.resolve(back),
+                front: texture_map.resolve(front),
             },
         })
         .collect();
@@ -80,7 +82,7 @@ pub fn load_core_blocks(mut registry: ResMut<BlockRegistry>, mut images: ResMut<
         .flat_map(|img| img.into_raw())
         .collect();
 
-    let texture_array = Image::new(
+    let mut texture_array = Image::new(
         Extent3d {
             width,
             height,
@@ -91,7 +93,13 @@ pub fn load_core_blocks(mut registry: ResMut<BlockRegistry>, mut images: ResMut<
         TextureFormat::Rgba8UnormSrgb,
         RenderAssetUsages::RENDER_WORLD,
     );
-    let texture_handle = images.add(texture_array);
+    texture_array.texture_view_descriptor = Some(TextureViewDescriptor {
+        dimension: Some(TextureViewDimension::D2Array),
+        ..default()
+    });
+
+    let mut registry = BlockRegistryInner::default();
+    registry.textures = Some(images.add(texture_array));
 
     debug!("Created texture array");
 
@@ -103,6 +111,8 @@ pub fn load_core_blocks(mut registry: ResMut<BlockRegistry>, mut images: ResMut<
             texture,
         });
     }
+
+    commands.insert_resource(BlockRegistry::new(registry));
 
     debug!("Registered all core blocks");
 }

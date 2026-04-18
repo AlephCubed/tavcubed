@@ -3,8 +3,10 @@
 mod material;
 mod packed_data;
 
+use crate::realm::block::data::BlockFace;
+use crate::realm::block::data::registry::{BlockRegistry, BlockRegistryInner};
 use crate::realm::chunk::mesh::material::ChunkMaterial;
-use crate::realm::chunk::mesh::packed_data::{Facing, pack};
+use crate::realm::chunk::mesh::packed_data::pack;
 use crate::realm::chunk::{Chunk, ChunkPos, STRIDE_X, STRIDE_Y, STRIDE_Z};
 use bevy::asset::RenderAssetUsages;
 use bevy::ecs::bundle::InsertMode;
@@ -52,6 +54,7 @@ struct ChunkMeshFinished {
 /// Spins up meshing tasks for changed chunks.
 fn mesh_changed_chunks(
     channel: Res<ChunkMeshChannel>,
+    registry: Res<BlockRegistry>,
     chunks: Query<(Entity, &Chunk), Changed<Chunk>>,
 ) {
     let pool = AsyncComputeTaskPool::get();
@@ -62,11 +65,12 @@ fn mesh_changed_chunks(
         trace!("Meshing {entity}");
 
         let chunk = *chunk;
+        let registry = registry.clone();
 
         pool.spawn(async move {
             _ = sender.send(ChunkMeshFinished {
                 chunk: entity,
-                mesh: mesh_chunk(chunk),
+                mesh: mesh_chunk(chunk, &registry),
             });
         })
         .detach();
@@ -74,7 +78,7 @@ fn mesh_changed_chunks(
 }
 
 /// Creates a mesh from a chunk.
-pub fn mesh_chunk(chunk: Chunk) -> Mesh {
+pub fn mesh_chunk(chunk: Chunk, registry: &BlockRegistryInner) -> Mesh {
     let voxel_count = chunk.iter().filter(|v| v.is_some()).count();
     let face_estimate = voxel_count * 3; // Estimate half faces.
 
@@ -83,35 +87,36 @@ pub fn mesh_chunk(chunk: Chunk) -> Mesh {
 
     for (full_index, voxel) in chunk.iter_full() {
         let pos = Chunk::index_to_pos(full_index);
+        let texture = registry[voxel.id].texture;
 
         if pos.x == 31 || chunk[full_index + STRIDE_X].is_none() {
             indices.extend(get_indices_pos(packed.len() as u32));
-            packed.extend([pack(pos, Facing::Right, voxel); 4]);
+            packed.extend([pack(pos, BlockFace::Right, texture); 4]);
         }
 
         if pos.x == 0 || chunk[full_index - STRIDE_X].is_none() {
             indices.extend(get_indices_neg(packed.len() as u32));
-            packed.extend([pack(pos, Facing::Left, voxel); 4]);
+            packed.extend([pack(pos, BlockFace::Left, texture); 4]);
         }
 
         if pos.y == 31 || chunk[full_index + STRIDE_Y].is_none() {
             indices.extend(get_indices_pos(packed.len() as u32));
-            packed.extend([pack(pos, Facing::Up, voxel); 4]);
+            packed.extend([pack(pos, BlockFace::Top, texture); 4]);
         }
 
         if pos.y == 0 || chunk[full_index - STRIDE_Y].is_none() {
             indices.extend(get_indices_neg(packed.len() as u32));
-            packed.extend([pack(pos, Facing::Down, voxel); 4]);
+            packed.extend([pack(pos, BlockFace::Bottom, texture); 4]);
         }
 
         if pos.z == 31 || chunk[full_index + STRIDE_Z].is_none() {
             indices.extend(get_indices_pos(packed.len() as u32));
-            packed.extend([pack(pos, Facing::Back, voxel); 4]);
+            packed.extend([pack(pos, BlockFace::Back, texture); 4]);
         }
 
         if pos.z == 0 || chunk[full_index - STRIDE_Z].is_none() {
             indices.extend(get_indices_neg(packed.len() as u32));
-            packed.extend([pack(pos, Facing::Front, voxel); 4]);
+            packed.extend([pack(pos, BlockFace::Front, texture); 4]);
         }
     }
 
@@ -127,6 +132,7 @@ pub fn mesh_chunk(chunk: Chunk) -> Mesh {
 fn mesh_finished(
     mut commands: Commands,
     channel: Res<ChunkMeshChannel>,
+    registry: Res<BlockRegistry>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ChunkMaterial>>,
     mut chunk_meshes: Query<(&mut ChunkMesh, &ChunkPos)>,
@@ -145,7 +151,10 @@ fn mesh_finished(
             insert(
                 (
                     Mesh3d(handle),
-                    MeshMaterial3d(materials.add(ChunkMaterial { chunk_pos: pos.0 })),
+                    MeshMaterial3d(materials.add(ChunkMaterial {
+                        chunk_pos: pos.0,
+                        texture_array: registry.textures.clone().unwrap(),
+                    })),
                 ),
                 InsertMode::Replace,
             ),

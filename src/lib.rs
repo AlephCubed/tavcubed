@@ -14,10 +14,14 @@ use realm::generation::ChunkGenerationPlugin;
 pub fn app() -> App {
     let mut app = App::new();
 
-    app.add_plugins(DefaultPlugins.set(LogPlugin {
-        filter: "tavcubed=debug".to_string(),
-        ..default()
-    }))
+    app.add_plugins(
+        DefaultPlugins
+            .set(LogPlugin {
+                filter: "tavcubed=debug".to_string(),
+                ..default()
+            })
+            .set(ImagePlugin::default_nearest()),
+    )
     .add_plugins((FreeCameraPlugin, WireframePlugin::default()))
     .add_plugins((
         PlayerPlugin,

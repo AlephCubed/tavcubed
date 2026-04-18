@@ -17,17 +17,51 @@ impl Block {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum BlockTexture {
     Uniform(usize),
     PerFace {
         top: usize,
         bottom: usize,
-        left: usize,
         right: usize,
-        front: usize,
+        left: usize,
         back: usize,
+        front: usize,
     },
+}
+
+impl BlockTexture {
+    #[inline]
+    pub fn get_face(&self, face: BlockFace) -> usize {
+        match self {
+            BlockTexture::Uniform(i) => *i,
+            BlockTexture::PerFace {
+                top,
+                bottom,
+                right,
+                left,
+                back,
+                front,
+            } => match face {
+                BlockFace::Top => *top,
+                BlockFace::Bottom => *bottom,
+                BlockFace::Right => *left,
+                BlockFace::Left => *right,
+                BlockFace::Back => *back,
+                BlockFace::Front => *front,
+            },
+        }
+    }
+}
+
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
+pub enum BlockFace {
+    Top,
+    Bottom,
+    Right,
+    Left,
+    Back,
+    Front,
 }
 
 #[derive(Deserialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -44,9 +78,9 @@ enum BlockTextureData {
     PerFace {
         top: String,
         bottom: String,
-        left: String,
         right: String,
-        front: String,
+        left: String,
         back: String,
+        front: String,
     },
 }
