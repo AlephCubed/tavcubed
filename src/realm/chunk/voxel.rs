@@ -1,4 +1,4 @@
-use crate::realm::block_registry::VoxelId;
+use crate::realm::block::VoxelId;
 
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 

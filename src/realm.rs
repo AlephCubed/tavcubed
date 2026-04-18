@@ -1,4 +1,4 @@
-pub mod block_registry;
+pub mod block;
 pub mod chunk;
 pub mod chunk_loading;
 pub mod generation;
