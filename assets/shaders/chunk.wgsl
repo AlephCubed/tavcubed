@@ -13,8 +13,9 @@ const PACKED_FACING_MASK: u32 = (1 << PACKED_FACING_SIZE) - 1; // 0b111
 
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
-    @location(0) uv: vec2<f32>,
-    @location(1) layer: u32,
+    @location(0) layer: u32,
+    @location(1) uv: vec2<f32>,
+    @location(2) brightness: f32,
 };
 
 @vertex
@@ -54,20 +55,34 @@ fn vertex(
 		case 4, 5: { // Back and Front (z)
 			vertex_pos += vertex_offset.zxy;
 		}
-		default: {
-			
-		}
+		default: {}
 	}
 	
 	var out: VertexOutput;
 	out.position = view.clip_from_world * vec4(vertex_pos, 1.0);
-	out.uv = vertex_offset.xz;
 	out.layer = texture;
+	out.uv = vertex_offset.xz;
+	
+	switch (facing) {
+		case 0: { // Top (y+)
+			out.brightness = 1;
+		}
+		case 1: { // Bot (y-)
+			out.brightness = 0.25;
+		}
+		case 2, 3: { // Right and Left (x)
+			out.brightness = max(vertex_offset.z, 0.25);
+		}
+		case 4, 5: { // Back and Front (z)
+			out.brightness = max(vertex_offset.x, 0.25);			
+		}
+		default: {}
+	}
 	
 	return out;
 }
 
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
-    return textureSample(array_texture, array_texture_sampler, in.uv, in.layer);
+    return textureSample(array_texture, array_texture_sampler, in.uv, in.layer) * in.brightness;
 }
