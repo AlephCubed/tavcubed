@@ -35,33 +35,24 @@ fn vertex(
 	var texture = packed_data >> (PACKED_POS_SIZE * 3 + PACKED_FACING_SIZE);
 	
 	var voxel_pos = voxel_offset + vec3<f32>(chunk_pos) * 32;
-	
 	var vertex_index = global_vertex_index % 4;
-	var vertex_offset = vec3<f32>(
-		f32(vertex_index == 1 || vertex_index == 2),
-		f32(facing % 2 == 0),
-		f32(vertex_index >= 2),
-	);
 	
-	var vertex_pos = voxel_pos;
 	
-	switch (facing) {
-		case 0, 1: { // Top and Bot (y)
-			vertex_pos += vertex_offset.xyz;
-		}
-		case 2, 3: { // Right and Left (x)
-			vertex_pos += vertex_offset.yzx;
-		}
-		case 4, 5: { // Back and Front (z)
-			vertex_pos += vertex_offset.zxy;
-		}
-		default: {}
-	}
+	
+	let basis = get_face_basis(facing);
+    
+    let u = f32(vertex_index == 1u || vertex_index == 2u);
+    let v = f32(vertex_index >= 2u);
+    
+    let vertex_offset = basis.origin + (u * basis.u_axis) + (v * basis.v_axis);
+    let vertex_pos = voxel_pos + vertex_offset;
+	
+	
 	
 	var out: VertexOutput;
 	out.position = view.clip_from_world * vec4(vertex_pos, 1.0);
 	out.layer = texture;
-	out.uv = vertex_offset.xz;
+    out.uv = vec2<f32>(u, v);
 	
 	switch (facing) {
 		case 0: { // Top (y+)
@@ -70,16 +61,47 @@ fn vertex(
 		case 1: { // Bot (y-)
 			out.brightness = 0.25;
 		}
-		case 2, 3: { // Right and Left (x)
-			out.brightness = max(vertex_offset.z, 0.25);
+		default: {
+			out.brightness = max(vertex_offset.y, 0.25);
 		}
-		case 4, 5: { // Back and Front (z)
-			out.brightness = max(vertex_offset.x, 0.25);			
-		}
-		default: {}
 	}
 	
 	return out;
+}
+
+struct FaceBasis {
+	/// Bottom-left corner of the face
+    origin: vec3<f32>, 
+    /// Direction of increasing U (and X on the quad)
+    u_axis: vec3<f32>,
+    /// direction of increasing V (and Y on the quad)
+    v_axis: vec3<f32>, 
+}
+
+fn get_face_basis(facing: u32) -> FaceBasis {
+    switch (facing) {
+        case 0: { // Top (+Y)
+            return FaceBasis(vec3(0,1,0), vec3(1,0,0), vec3(0,0,1));
+        }
+        case 1: { // Bottom (-Y)
+            return FaceBasis(vec3(0,0,1), vec3(1,0,0), vec3(0,0,-1));
+        }
+        case 2: { // Right (+X)
+            return FaceBasis(vec3(1,1,1), vec3(0,0,-1), vec3(0,-1,0));
+        }
+        case 3: { // Left (-X)
+            return FaceBasis(vec3(0,1,0), vec3(0,0,1), vec3(0,-1,0));
+        }
+        case 4: { // Back (+Z)
+            return FaceBasis(vec3(0,1,1), vec3(1,0,0), vec3(0,-1,0));
+        }
+        case 5: { // Front (-Z)
+            return FaceBasis(vec3(1,1,0), vec3(-1,0,0), vec3(0,-1,0));
+        }
+        default: {
+            return FaceBasis(vec3(0,0,0), vec3(1,0,0), vec3(0,1,0));
+        }
+    }
 }
 
 @fragment

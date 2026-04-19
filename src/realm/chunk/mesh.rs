@@ -90,32 +90,32 @@ pub fn mesh_chunk(chunk: Chunk, registry: &BlockRegistryInner) -> Mesh {
         let texture = registry[voxel.id].texture;
 
         if pos.x == 31 || chunk[full_index + STRIDE_X].is_none() {
-            indices.extend(get_indices_pos(packed.len() as u32));
+            indices.extend(get_indices(packed.len() as u32));
             packed.extend([pack(pos, BlockFace::Right, texture); 4]);
         }
 
         if pos.x == 0 || chunk[full_index - STRIDE_X].is_none() {
-            indices.extend(get_indices_neg(packed.len() as u32));
+            indices.extend(get_indices(packed.len() as u32));
             packed.extend([pack(pos, BlockFace::Left, texture); 4]);
         }
 
         if pos.y == 31 || chunk[full_index + STRIDE_Y].is_none() {
-            indices.extend(get_indices_pos(packed.len() as u32));
+            indices.extend(get_indices(packed.len() as u32));
             packed.extend([pack(pos, BlockFace::Top, texture); 4]);
         }
 
         if pos.y == 0 || chunk[full_index - STRIDE_Y].is_none() {
-            indices.extend(get_indices_neg(packed.len() as u32));
+            indices.extend(get_indices(packed.len() as u32));
             packed.extend([pack(pos, BlockFace::Bottom, texture); 4]);
         }
 
         if pos.z == 31 || chunk[full_index + STRIDE_Z].is_none() {
-            indices.extend(get_indices_pos(packed.len() as u32));
+            indices.extend(get_indices(packed.len() as u32));
             packed.extend([pack(pos, BlockFace::Back, texture); 4]);
         }
 
         if pos.z == 0 || chunk[full_index - STRIDE_Z].is_none() {
-            indices.extend(get_indices_neg(packed.len() as u32));
+            indices.extend(get_indices(packed.len() as u32));
             packed.extend([pack(pos, BlockFace::Front, texture); 4]);
         }
     }
@@ -166,7 +166,7 @@ fn mesh_finished(
 }
 
 #[inline]
-pub const fn get_indices_pos(index: u32) -> [u32; INDICES_PER_FACE] {
+pub const fn get_indices(index: u32) -> [u32; INDICES_PER_FACE] {
     [
         index + 0,
         index + 3,
@@ -174,17 +174,5 @@ pub const fn get_indices_pos(index: u32) -> [u32; INDICES_PER_FACE] {
         index + 1,
         index + 3,
         index + 2,
-    ]
-}
-
-#[inline]
-pub const fn get_indices_neg(index: u32) -> [u32; INDICES_PER_FACE] {
-    [
-        index + 0,
-        index + 1,
-        index + 3,
-        index + 1,
-        index + 2,
-        index + 3,
     ]
 }
