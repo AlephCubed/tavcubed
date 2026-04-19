@@ -1,9 +1,11 @@
+use crate::realm::block::data::registry::BlockRegistry;
 use crate::realm::chunk::voxel::Voxel;
 use crate::realm::chunk::{Chunk, ChunkPos};
 use bevy::math::u8vec3;
 use bevy::prelude::*;
 use bevy::tasks::AsyncComputeTaskPool;
 use crossbeam_channel::{Receiver, Sender};
+use noiz::prelude::common_noise::Simplex;
 use noiz::prelude::*;
 
 pub struct ChunkGenerationPlugin;
@@ -49,6 +51,7 @@ struct ChunkGenerationFinished {
 fn generate_perlin_chunk(
     mut messages: MessageReader<GenerateChunk>,
     channel: Res<ChunkGenerationChannel>,
+    registry: Res<BlockRegistry>,
 ) {
     let pool = AsyncComputeTaskPool::get();
 
@@ -64,9 +67,10 @@ fn generate_perlin_chunk(
         }
 
         let message = *message;
+        let registry = registry.clone();
 
         pool.spawn(async move {
-            let noise = Noise::<MixCellGradients<OrthoGrid, Smoothstep, QuickGradients>>::default();
+            let noise = Noise::<Simplex>::default();
 
             let mut chunk = Chunk::default();
 
@@ -80,9 +84,15 @@ fn generate_perlin_chunk(
                     );
                     let height = BASE + (sample * AMPLITUDE) as u8;
 
-                    for y in 0..height {
-                        chunk[u8vec3(x, y, z)] = Some(Voxel::default());
+                    for y in 0..(height - 1) {
+                        chunk[u8vec3(x, y, z)] = Some(Voxel::new(
+                            registry.voxel_id(&"core:stone".try_into().unwrap()),
+                        ));
                     }
+
+                    chunk[u8vec3(x, height - 1, z)] = Some(Voxel::new(
+                        registry.voxel_id(&"core:grass".try_into().unwrap()),
+                    ));
                 }
             }
 

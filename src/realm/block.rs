@@ -99,7 +99,7 @@ impl std::fmt::Display for BlockId {
 impl FromStr for BlockId {
     type Err = BlockIdError;
 
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.contains(|c: char| c.is_whitespace()) {
             return Err(BlockIdError::ContainsWhitespace);
         }
@@ -114,6 +114,14 @@ impl FromStr for BlockId {
         }
 
         Ok(Self(s.to_owned()))
+    }
+}
+
+impl TryFrom<&str> for BlockId {
+    type Error = BlockIdError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        value.parse()
     }
 }
 

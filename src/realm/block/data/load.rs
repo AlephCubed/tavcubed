@@ -57,8 +57,8 @@ pub fn load_core_blocks(mut commands: Commands, mut images: ResMut<Assets<Image>
 
     // Load all images.
     let textures: Vec<image::RgbaImage> = texture_map
-        .0
-        .keys()
+        .paths
+        .iter()
         .map(|path| {
             image::open(format!("assets/{}", path))
                 .unwrap_or_else(|_| panic!("Failed to load texture: {}", path))
@@ -118,16 +118,20 @@ pub fn load_core_blocks(mut commands: Commands, mut images: ResMut<Assets<Image>
 }
 
 #[derive(Default)]
-struct TextureMap(HashMap<String, usize>);
+struct TextureMap {
+    map: HashMap<String, usize>,
+    paths: Vec<String>,
+}
 
 impl TextureMap {
     pub fn resolve(&mut self, path: &str) -> usize {
-        if let Some(idx) = self.0.get(path) {
+        if let Some(idx) = self.map.get(path) {
             return *idx;
         };
 
-        let idx = self.0.len();
-        self.0.insert(path.to_string(), idx);
+        let idx = self.paths.len();
+        self.map.insert(path.to_string(), idx);
+        self.paths.push(path.to_string());
         idx
     }
 }

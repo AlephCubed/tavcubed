@@ -5,3 +5,9 @@ use crate::realm::block::VoxelId;
 pub struct Voxel {
     pub id: VoxelId,
 }
+
+impl Voxel {
+    pub fn new(id: VoxelId) -> Self {
+        Self { id }
+    }
+}
