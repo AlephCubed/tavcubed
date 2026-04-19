@@ -1,0 +1,10 @@
+id = "core:grass"
+name = "Grass"
+
+[texture]
+top = "textures/grass.png"
+bottom = "textures/dirt.png"
+right = "textures/dirt.png"
+left = "textures/dirt.png"
+back = "textures/dirt.png"
+front = "textures/dirt.png"
