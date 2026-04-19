@@ -1,0 +1,236 @@
+{
+	"connections": [
+		{
+			"from": "clouds_noise",
+			"from_port": 0,
+			"to": "blend2",
+			"to_port": 1
+		},
+		{
+			"from": "blend2",
+			"from_port": 0,
+			"to": "colorize",
+			"to_port": 0
+		},
+		{
+			"from": "noise_white",
+			"from_port": 0,
+			"to": "blend2",
+			"to_port": 0
+		},
+		{
+			"from": "directional_noise",
+			"from_port": 0,
+			"to": "blend2",
+			"to_port": 3
+		},
+		{
+			"from": "colorize",
+			"from_port": 0,
+			"to": "pixelize",
+			"to_port": 0
+		},
+		{
+			"from": "pixelize",
+			"from_port": 0,
+			"to": "Material",
+			"to_port": 0
+		},
+		{
+			"from": "pixelize",
+			"from_port": 0,
+			"to": "export",
+			"to_port": 0
+		}
+	],
+	"label": "Graph",
+	"longdesc": "",
+	"name": "_Node_698",
+	"node_position": {
+		"x": 0.0,
+		"y": 0.0
+	},
+	"nodes": [
+		{
+			"export_paths": {
+
+			},
+			"name": "Material",
+			"node_position": {
+				"x": 452.817993164062,
+				"y": -39.1140098571777
+			},
+			"parameters": {
+				"albedo_color": {
+					"a": 1.0,
+					"b": 1.0,
+					"g": 1.0,
+					"r": 1.0,
+					"type": "Color"
+				},
+				"ao": 1.0,
+				"depth_scale": 0.5,
+				"emission_energy": 1.0,
+				"flags_transparent": true,
+				"metallic": 0.0,
+				"normal": 1.0,
+				"roughness": 1.0,
+				"size": 11.0,
+				"sss": 1.0
+			},
+			"seed_int": 0,
+			"type": "material"
+		},
+		{
+			"name": "colorize",
+			"node_position": {
+				"x": -24.0351028442383,
+				"y": -7.25866603851318
+			},
+			"parameters": {
+				"gradient": {
+					"interpolation": 2,
+					"points": [
+						{
+							"a": 1.0,
+							"b": 0.0,
+							"g": 0.0,
+							"pos": 0.0,
+							"r": 0.0
+						},
+						{
+							"a": 1.0,
+							"b": 0.00784313771873713,
+							"g": 0.450980395078659,
+							"pos": 0.23475568198793,
+							"r": 0.309803932905197
+						},
+						{
+							"a": 1.0,
+							"b": 0.0156862754374743,
+							"g": 0.749019622802734,
+							"pos": 0.416400099803567,
+							"r": 0.592156887054443
+						},
+						{
+							"a": 1.0,
+							"b": 0.0117647061124444,
+							"g": 0.650980412960052,
+							"pos": 0.460376980199869,
+							"r": 0.513725519180298
+						},
+						{
+							"a": 1.0,
+							"b": 0.384313732385635,
+							"g": 0.850980401039124,
+							"pos": 0.701294995630676,
+							"r": 0.749019622802734
+						},
+						{
+							"a": 1.0,
+							"b": 0.627451002597809,
+							"g": 0.949019610881805,
+							"pos": 1.0,
+							"r": 0.878431379795074
+						}
+					],
+					"type": "Gradient"
+				}
+			},
+			"seed_int": 0,
+			"type": "colorize"
+		},
+		{
+			"name": "noise_white",
+			"node_position": {
+				"x": -641.868957519531,
+				"y": -243.733444213867
+			},
+			"parameters": {
+				"size": 5.0
+			},
+			"seed_int": 0,
+			"type": "noise_white"
+		},
+		{
+			"name": "clouds_noise",
+			"node_position": {
+				"x": -661.230895996094,
+				"y": -4.8620810508728
+			},
+			"parameters": {
+				"n_scale": 0.5,
+				"param0": 10.0,
+				"param1": 0.0
+			},
+			"seed_int": 2021218688,
+			"type": "clouds_noise"
+		},
+		{
+			"name": "directional_noise",
+			"node_position": {
+				"x": -657.756591796875,
+				"y": 147.353942871094
+			},
+			"parameters": {
+				"n_scale": 0.1,
+				"param0": 1.0,
+				"param1": 11.0
+			},
+			"seed_int": 0,
+			"type": "directional_noise"
+		},
+		{
+			"generic_size": 2,
+			"name": "blend2",
+			"node_position": {
+				"x": -265.111541748047,
+				"y": 54.1839408874512
+			},
+			"parameters": {
+				"amount1": 0.5,
+				"amount2": 0.6,
+				"blend_type1": 0.0,
+				"blend_type2": 0.0
+			},
+			"seed_int": 0,
+			"type": "blend2"
+		},
+		{
+			"name": "pixelize",
+			"node_position": {
+				"x": 170.385864257812,
+				"y": -44.7383728027344
+			},
+			"parameters": {
+				"c": 16.0,
+				"d": 0.0,
+				"t": 0,
+				"x": 32.0,
+				"y": 32.0
+			},
+			"seed_int": 0,
+			"type": "pixelize"
+		},
+		{
+			"name": "export",
+			"node_position": {
+				"x": 461.135864257812,
+				"y": -193.238403320312
+			},
+			"parameters": {
+				"format": 0,
+				"size": 5,
+				"suffix": "$project"
+			},
+			"seed_int": 0,
+			"type": "export"
+		}
+	],
+	"parameters": {
+
+	},
+	"seed_int": 0,
+	"shortdesc": "",
+	"type": "graph"
+}
