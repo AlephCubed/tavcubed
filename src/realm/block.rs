@@ -45,11 +45,11 @@ pub struct BlockId(String);
 
 impl BlockId {
     pub fn new(
-        mod_id: impl AsRef<String>,
-        block_id: impl AsRef<String>,
+        mod_id: impl Into<String>,
+        block_id: impl Into<String>,
     ) -> Result<Self, BlockIdError> {
-        let mod_id = mod_id.as_ref();
-        let block_id = block_id.as_ref();
+        let mod_id = mod_id.into();
+        let block_id = block_id.into();
 
         if mod_id.is_empty() {
             return Err(BlockIdError::MissingModId);

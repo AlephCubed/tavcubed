@@ -12,6 +12,10 @@ pub struct Block {
 }
 
 impl Block {
+    pub fn new(id: BlockId, name: String, texture: BlockTexture) -> Block {
+        Block { id, name, texture }
+    }
+
     pub fn id(&self) -> &BlockId {
         &self.id
     }
