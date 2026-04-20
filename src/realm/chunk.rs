@@ -1,4 +1,5 @@
 pub mod mesh;
+mod octree;
 pub mod voxel;
 
 use crate::realm::chunk::mesh::ChunkMesh;
