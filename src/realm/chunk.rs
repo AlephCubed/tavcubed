@@ -15,6 +15,7 @@ use std::ops::Index;
 pub struct ChunkPos(pub IVec3);
 
 pub const DIAMETER: usize = 32;
+pub const RADIUS: usize = DIAMETER / 2;
 
 pub type IntoIter = std::array::IntoIter<Option<Voxel>, CHUNK_VOXEL_COUNT>;
 pub type Iter<'a> = core::slice::Iter<'a, Option<Voxel>>;

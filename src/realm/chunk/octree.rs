@@ -1,10 +1,16 @@
-use crate::realm::chunk::DIAMETER;
+use crate::debug_asset_valid_voxel_pos;
 use crate::realm::chunk::voxel::Voxel;
+use crate::realm::chunk::{DIAMETER, STRIDE_Y, STRIDE_Z};
+use bevy::math::U8Vec3;
 use bitflags::bitflags;
 
 pub const OCTREE_DEPTH: usize = DIAMETER / 8;
 // 8(8^n - 1)/7 where n is the depth of the tree.
-pub const OCTREE_NODE_COUNT: usize = 8 * (8usize.pow(OCTREE_DEPTH as u32) - 1) / 7;
+pub const OCTREE_NODE_COUNT: usize = (8 * 8usize.pow(OCTREE_DEPTH as u32) - 1) / 7;
+
+const LEAF_START: usize = Octree::depth_first_index(OCTREE_DEPTH as u32);
+const LEAF_DIAMETER: usize = 2usize.pow(OCTREE_DEPTH as u32);
+
 pub type OctreeBuffer = [OctreeNode; OCTREE_NODE_COUNT];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -67,6 +73,32 @@ impl Octree {
         let depth = Self::get_depth(index);
         let offset = Self::relative_index(index);
         Self::depth_first_index(depth - 1) + offset / 8
+    }
+
+    /// Converts a voxel position to its parents octree node index.
+    #[inline]
+    fn pos_to_leaf_index(mut pos: U8Vec3) -> usize {
+        debug_asset_valid_voxel_pos!(pos);
+        pos /= U8Vec3::splat(2);
+        LEAF_START
+            + pos.z as usize * (STRIDE_Z / 4)
+            + pos.y as usize * (STRIDE_Y / 2)
+            + pos.x as usize
+    }
+
+    /// Converts a node index at any layer into the voxel position of its first (minimum corner) voxel.
+    #[inline]
+    fn node_index_to_pos(index: usize) -> U8Vec3 {
+        let depth = Self::get_depth(index);
+        let offset = Self::relative_index(index);
+        let grid_size = LEAF_DIAMETER >> (OCTREE_DEPTH as u32 - depth); // 2^depth nodes per axis.
+        let voxel_size = DIAMETER as u32 >> depth; // Voxels per node side.
+
+        U8Vec3::new(
+            (offset % grid_size) as u8,
+            ((offset / grid_size) % grid_size) as u8,
+            (offset / (grid_size * grid_size)) as u8,
+        ) * U8Vec3::splat(voxel_size as u8)
     }
 }
 
@@ -191,5 +223,92 @@ mod tests {
         for i in (73 - 8)..73 {
             assert_eq!(Octree::parent_index(i), 8);
         }
+    }
+
+    #[test]
+    fn pos_to_leaf() {
+        assert_eq!(Octree::pos_to_leaf_index(U8Vec3::new(0, 0, 0)), LEAF_START);
+        assert_eq!(Octree::pos_to_leaf_index(U8Vec3::new(1, 0, 0)), LEAF_START);
+        assert_eq!(Octree::pos_to_leaf_index(U8Vec3::new(0, 1, 0)), LEAF_START);
+        assert_eq!(Octree::pos_to_leaf_index(U8Vec3::new(1, 1, 0)), LEAF_START);
+        assert_eq!(Octree::pos_to_leaf_index(U8Vec3::new(0, 0, 1)), LEAF_START);
+        assert_eq!(Octree::pos_to_leaf_index(U8Vec3::new(1, 0, 1)), LEAF_START);
+        assert_eq!(Octree::pos_to_leaf_index(U8Vec3::new(0, 1, 1)), LEAF_START);
+        assert_eq!(Octree::pos_to_leaf_index(U8Vec3::new(1, 1, 1)), LEAF_START);
+    }
+
+    #[test]
+    fn leaf_to_pos_x() {
+        assert_eq!(Octree::node_index_to_pos(LEAF_START), U8Vec3::new(0, 0, 0));
+
+        assert_eq!(
+            Octree::node_index_to_pos(LEAF_START + 1),
+            U8Vec3::new(2, 0, 0)
+        );
+        assert_eq!(
+            Octree::node_index_to_pos(LEAF_START + 2),
+            U8Vec3::new(4, 0, 0)
+        );
+        assert_eq!(
+            Octree::node_index_to_pos(LEAF_START + 3),
+            U8Vec3::new(6, 0, 0)
+        );
+    }
+
+    #[test]
+    fn leaf_to_pos_y() {
+        assert_eq!(
+            Octree::node_index_to_pos(LEAF_START + LEAF_DIAMETER),
+            U8Vec3::new(0, 2, 0)
+        );
+        assert_eq!(
+            Octree::node_index_to_pos(LEAF_START + LEAF_DIAMETER * 2),
+            U8Vec3::new(0, 4, 0)
+        );
+        assert_eq!(
+            Octree::node_index_to_pos(LEAF_START + LEAF_DIAMETER * 3),
+            U8Vec3::new(0, 6, 0)
+        );
+    }
+
+    #[test]
+    fn leaf_to_pos_z() {
+        assert_eq!(
+            Octree::node_index_to_pos(LEAF_START + LEAF_DIAMETER * LEAF_DIAMETER),
+            U8Vec3::new(0, 0, 2)
+        );
+        assert_eq!(
+            Octree::node_index_to_pos(LEAF_START + LEAF_DIAMETER * LEAF_DIAMETER * 2),
+            U8Vec3::new(0, 0, 4)
+        );
+        assert_eq!(
+            Octree::node_index_to_pos(LEAF_START + LEAF_DIAMETER * LEAF_DIAMETER * 3),
+            U8Vec3::new(0, 0, 6)
+        );
+    }
+
+    #[test]
+    fn leaf_to_pos_last() {
+        assert_eq!(
+            Octree::node_index_to_pos(OCTREE_NODE_COUNT - 1),
+            U8Vec3::new(30, 30, 30)
+        );
+    }
+
+    #[test]
+    fn leaf_to_pos_root() {
+        assert_eq!(Octree::node_index_to_pos(0), U8Vec3::new(0, 0, 0));
+    }
+
+    #[test]
+    fn leaf_to_pos_depth_1() {
+        assert_eq!(Octree::node_index_to_pos(1), U8Vec3::new(00, 00, 00));
+        assert_eq!(Octree::node_index_to_pos(2), U8Vec3::new(16, 00, 00));
+        assert_eq!(Octree::node_index_to_pos(3), U8Vec3::new(00, 16, 00));
+        assert_eq!(Octree::node_index_to_pos(4), U8Vec3::new(16, 16, 00));
+        assert_eq!(Octree::node_index_to_pos(5), U8Vec3::new(00, 00, 16));
+        assert_eq!(Octree::node_index_to_pos(6), U8Vec3::new(16, 00, 16));
+        assert_eq!(Octree::node_index_to_pos(7), U8Vec3::new(00, 16, 16));
+        assert_eq!(Octree::node_index_to_pos(8), U8Vec3::new(16, 16, 16));
     }
 }

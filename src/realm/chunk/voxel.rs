@@ -9,13 +9,46 @@ pub const STRIDE_Z: usize = DIAMETER * DIAMETER;
 
 pub type VoxelBuffer = [Option<Voxel>; CHUNK_VOXEL_COUNT];
 
+#[macro_export]
+macro_rules! debug_assert_valid_voxel_index {
+    ($index:expr) => {
+        debug_assert!(
+            $index < CHUNK_VOXEL_COUNT,
+            "Index must be less than {}, got {}",
+            CHUNK_VOXEL_COUNT,
+            $index,
+        );
+    };
+}
+
+#[macro_export]
+macro_rules! debug_asset_valid_voxel_pos {
+    ($pos:expr) => {
+        debug_assert!(
+            $pos.x < DIAMETER as u8,
+            "x position must be less than {}, got {}",
+            DIAMETER,
+            $pos.x,
+        );
+        debug_assert!(
+            $pos.y < DIAMETER as u8,
+            "y position must be less than {}, got {}",
+            DIAMETER,
+            $pos.y,
+        );
+        debug_assert!(
+            $pos.z < DIAMETER as u8,
+            "z position must be less than {}, got {}",
+            DIAMETER,
+            $pos.z,
+        );
+    };
+}
+
 impl Chunk {
     #[inline(always)]
     pub fn index_to_pos(index: usize) -> U8Vec3 {
-        debug_assert!(
-            index < CHUNK_VOXEL_COUNT,
-            "Index must be less than {CHUNK_VOXEL_COUNT}, got {index}"
-        );
+        debug_assert_valid_voxel_index!(index);
         U8Vec3 {
             x: (index % STRIDE_Y) as u8,
             y: ((index / STRIDE_Y) % STRIDE_Y) as u8,
@@ -25,21 +58,7 @@ impl Chunk {
 
     #[inline(always)]
     pub fn pos_to_index(pos: U8Vec3) -> usize {
-        debug_assert!(
-            pos.x < DIAMETER as u8,
-            "x position must be less than {DIAMETER}, got {}",
-            pos.x
-        );
-        debug_assert!(
-            pos.y < DIAMETER as u8,
-            "y position must be less than {DIAMETER}, got {}",
-            pos.y
-        );
-        debug_assert!(
-            pos.z < DIAMETER as u8,
-            "z position must be less than {DIAMETER}, got {}",
-            pos.z
-        );
+        debug_asset_valid_voxel_pos!(pos);
         (pos.z as usize * STRIDE_Z) + (pos.y as usize * STRIDE_Y) + pos.x as usize
     }
 }
