@@ -5,7 +5,7 @@ use crate::realm::block::data::registry::BlockRegistry;
 use bevy::prelude::*;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt::Formatter;
-use std::num::NonZeroU8;
+use std::num::NonZeroU16;
 use std::str::FromStr;
 
 pub struct BlockPlugin;
@@ -21,7 +21,7 @@ impl Plugin for BlockPlugin {
 ///
 /// See [`BlockId`] for the block's stable ID.
 #[derive(Deref, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct VoxelId(NonZeroU8);
+pub struct VoxelId(NonZeroU16);
 
 impl Default for VoxelId {
     fn default() -> Self {
@@ -31,8 +31,8 @@ impl Default for VoxelId {
 
 impl VoxelId {
     /// Creates a new voxel ID if the value is not zero.
-    pub fn new(id: u8) -> Option<Self> {
-        Some(Self(NonZeroU8::new(id)?))
+    pub fn new(id: u16) -> Option<Self> {
+        Some(Self(NonZeroU16::new(id)?))
     }
 }
 
@@ -59,7 +59,7 @@ impl BlockId {
         }
 
         if mod_id.contains(|c: char| c.is_whitespace())
-            || block_id.contains(|c: char| !c.is_whitespace())
+            || block_id.contains(|c: char| c.is_whitespace())
         {
             return Err(BlockIdError::ContainsWhitespace);
         }

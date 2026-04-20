@@ -29,7 +29,7 @@ impl BlockRegistryInner {
         let block_id = block.id().clone();
         self.blocks.push(block);
 
-        let voxel_id = VoxelId::new(self.blocks.len() as u8).unwrap();
+        let voxel_id = VoxelId::new(self.blocks.len() as u16).unwrap();
         self.id_map.insert(block_id, voxel_id);
 
         voxel_id
