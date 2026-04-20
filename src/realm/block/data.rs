@@ -23,20 +23,20 @@ impl Block {
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum BlockTexture {
-    Uniform(usize),
+    Uniform(u16),
     PerFace {
-        top: usize,
-        bottom: usize,
-        right: usize,
-        left: usize,
-        back: usize,
-        front: usize,
+        top: u16,
+        bottom: u16,
+        right: u16,
+        left: u16,
+        back: u16,
+        front: u16,
     },
 }
 
 impl BlockTexture {
     #[inline]
-    pub fn get_face(&self, face: BlockFace) -> usize {
+    pub fn get_face(&self, face: BlockFace) -> u16 {
         match self {
             BlockTexture::Uniform(i) => *i,
             BlockTexture::PerFace {

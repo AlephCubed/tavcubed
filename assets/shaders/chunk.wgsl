@@ -11,6 +11,9 @@ const PACKED_POS_MASK: u32 = (1 << PACKED_POS_SIZE) - 1; // 0b11111
 const PACKED_FACING_SIZE: u32 = 3;
 const PACKED_FACING_MASK: u32 = (1 << PACKED_FACING_SIZE) - 1; // 0b111
 
+const PACKED_TEXTURE_SIZE: u32 = 16;
+const PACKED_TEXTURE_MASK: u32 = (1 << PACKED_TEXTURE_SIZE) - 1; // 0xFFFF
+
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
     @location(0) layer: u32,
@@ -20,19 +23,21 @@ struct VertexOutput {
 
 @vertex
 fn vertex(
-	@location(0) packed_data: u32,
+	@location(0) packed_data: vec2<u32>,
 	@builtin(vertex_index) global_vertex_index: u32
 ) -> VertexOutput {
+	let low = packed_data.x;
+	let high = packed_data.y;
 	// Unpacked voxel pos:
 	var voxel_offset = vec3<f32>(
-		f32(packed_data & PACKED_POS_MASK),
-		f32((packed_data >> PACKED_POS_SIZE) & PACKED_POS_MASK),
-		f32((packed_data >> (PACKED_POS_SIZE * 2)) & PACKED_POS_MASK),
+		f32(low & PACKED_POS_MASK),
+		f32((low >> PACKED_POS_SIZE) & PACKED_POS_MASK),
+		f32((low >> (PACKED_POS_SIZE * 2)) & PACKED_POS_MASK),
 	);
 	// Unpacked quad facing dir:
-	var facing = (packed_data >> (PACKED_POS_SIZE * 3)) & PACKED_FACING_MASK;
+	var facing = (low >> (PACKED_POS_SIZE * 3)) & PACKED_FACING_MASK;
 	// Unpacked texture ID:
-	var texture = packed_data >> (PACKED_POS_SIZE * 3 + PACKED_FACING_SIZE);
+	var texture = high & PACKED_TEXTURE_MASK;
 	
 	var voxel_pos = voxel_offset + vec3<f32>(chunk_pos) * 32;
 	var vertex_index = global_vertex_index % 4;

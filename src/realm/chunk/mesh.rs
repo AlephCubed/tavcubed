@@ -35,7 +35,7 @@ pub struct ChunkMesh(pub Handle<Mesh>);
 
 impl ChunkMesh {
     pub const ATTRIBUTE_PACKED_DATA: MeshVertexAttribute =
-        MeshVertexAttribute::new("packed_data", 806567756968, VertexFormat::Uint32);
+        MeshVertexAttribute::new("packed_data", 806567756968, VertexFormat::Uint32x2);
 }
 
 /// A channel to send finished meshes through to be applied.
@@ -83,7 +83,7 @@ pub fn mesh_chunk(chunk: Chunk, registry: &BlockRegistryInner) -> Mesh {
     let face_estimate = voxel_count * 3; // Estimate half faces.
 
     let mut indices = Vec::with_capacity(face_estimate * INDICES_PER_FACE);
-    let mut packed: Vec<u32> = Vec::with_capacity(face_estimate * VERTICES_PER_FACE);
+    let mut packed: Vec<[u32; 2]> = Vec::with_capacity(face_estimate * VERTICES_PER_FACE);
 
     for (full_index, voxel) in chunk.iter_full() {
         let pos = Chunk::index_to_pos(full_index);

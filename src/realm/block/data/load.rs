@@ -124,14 +124,14 @@ struct TextureMap {
 }
 
 impl TextureMap {
-    pub fn resolve(&mut self, path: &str) -> usize {
+    pub fn resolve(&mut self, path: &str) -> u16 {
         if let Some(idx) = self.map.get(path) {
-            return *idx;
+            return *idx as u16;
         };
 
         let idx = self.paths.len();
         self.map.insert(path.to_string(), idx);
         self.paths.push(path.to_string());
-        idx
+        idx as u16
     }
 }

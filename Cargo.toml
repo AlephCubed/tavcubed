@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 bevy = { version = "0.18", features = ["free_camera", "debug"] }
-
+bytemuck = "1.25"
 crossbeam-channel = "0.5"
 image = "0.25"
 # Set max log levels. This helps avoid unwanted low-severity log spam, which can affect performance.
