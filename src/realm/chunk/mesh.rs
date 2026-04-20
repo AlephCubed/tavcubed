@@ -6,11 +6,12 @@ mod packed_data;
 use crate::realm::block::data::BlockFace;
 use crate::realm::block::data::registry::{BlockRegistry, BlockRegistryInner};
 use crate::realm::chunk::mesh::material::ChunkMaterial;
-use crate::realm::chunk::mesh::packed_data::pack;
+use crate::realm::chunk::mesh::packed_data::{VoxelData, pack};
 use crate::realm::chunk::{Chunk, ChunkPos, STRIDE_X, STRIDE_Y, STRIDE_Z};
 use bevy::asset::RenderAssetUsages;
 use bevy::ecs::bundle::InsertMode;
 use bevy::ecs::system::entity_command::insert;
+use bevy::math::U8Vec2;
 use bevy::mesh::{Indices, MeshVertexAttribute, PrimitiveTopology, VertexFormat};
 use bevy::prelude::*;
 use bevy::tasks::AsyncComputeTaskPool;
@@ -87,36 +88,41 @@ pub fn mesh_chunk(chunk: Chunk, registry: &BlockRegistryInner) -> Mesh {
 
     for (full_index, voxel) in chunk.iter_full() {
         let pos = Chunk::index_to_pos(full_index);
-        let texture = registry[voxel.id].texture;
+
+        let data = VoxelData {
+            position: pos,
+            size: U8Vec2::new(1, 1),
+            texture: registry[voxel.id].texture,
+        };
 
         if pos.x == 31 || chunk[full_index + STRIDE_X].is_none() {
             indices.extend(get_indices(packed.len() as u32));
-            packed.extend([pack(pos, BlockFace::Right, texture); 4]);
+            packed.extend([pack(data, BlockFace::Right); 4]);
         }
 
         if pos.x == 0 || chunk[full_index - STRIDE_X].is_none() {
             indices.extend(get_indices(packed.len() as u32));
-            packed.extend([pack(pos, BlockFace::Left, texture); 4]);
+            packed.extend([pack(data, BlockFace::Left); 4]);
         }
 
         if pos.y == 31 || chunk[full_index + STRIDE_Y].is_none() {
             indices.extend(get_indices(packed.len() as u32));
-            packed.extend([pack(pos, BlockFace::Top, texture); 4]);
+            packed.extend([pack(data, BlockFace::Top); 4]);
         }
 
         if pos.y == 0 || chunk[full_index - STRIDE_Y].is_none() {
             indices.extend(get_indices(packed.len() as u32));
-            packed.extend([pack(pos, BlockFace::Bottom, texture); 4]);
+            packed.extend([pack(data, BlockFace::Bottom); 4]);
         }
 
         if pos.z == 31 || chunk[full_index + STRIDE_Z].is_none() {
             indices.extend(get_indices(packed.len() as u32));
-            packed.extend([pack(pos, BlockFace::Back, texture); 4]);
+            packed.extend([pack(data, BlockFace::Back); 4]);
         }
 
         if pos.z == 0 || chunk[full_index - STRIDE_Z].is_none() {
             indices.extend(get_indices(packed.len() as u32));
-            packed.extend([pack(pos, BlockFace::Front, texture); 4]);
+            packed.extend([pack(data, BlockFace::Front); 4]);
         }
     }
 

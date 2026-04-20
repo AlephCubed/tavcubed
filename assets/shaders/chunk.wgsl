@@ -5,8 +5,8 @@
 @group(#{MATERIAL_BIND_GROUP}) @binding(1) var array_texture: texture_2d_array<f32>;
 @group(#{MATERIAL_BIND_GROUP}) @binding(2) var array_texture_sampler: sampler;
 
-const PACKED_POS_SIZE: u32 = 5;
-const PACKED_POS_MASK: u32 = (1 << PACKED_POS_SIZE) - 1; // 0b11111
+const PACKED_AXIS_SIZE: u32 = 5;
+const PACKED_AXIS_MASK: u32 = (1 << PACKED_AXIS_SIZE) - 1; // 0b11111
 
 const PACKED_FACING_SIZE: u32 = 3;
 const PACKED_FACING_MASK: u32 = (1 << PACKED_FACING_SIZE) - 1; // 0b111
@@ -30,12 +30,17 @@ fn vertex(
 	let high = packed_data.y;
 	// Unpacked voxel pos:
 	var voxel_offset = vec3<f32>(
-		f32(low & PACKED_POS_MASK),
-		f32((low >> PACKED_POS_SIZE) & PACKED_POS_MASK),
-		f32((low >> (PACKED_POS_SIZE * 2)) & PACKED_POS_MASK),
+		f32(low & PACKED_AXIS_MASK),
+		f32((low >> PACKED_AXIS_SIZE) & PACKED_AXIS_MASK),
+		f32((low >> (PACKED_AXIS_SIZE * 2)) & PACKED_AXIS_MASK),
 	);
+	var size = vec2<f32>(
+		f32((low >> (PACKED_AXIS_SIZE * 3)) & PACKED_AXIS_MASK),
+		f32((low >> (PACKED_AXIS_SIZE * 4)) & PACKED_AXIS_MASK),
+	);
+	
 	// Unpacked quad facing dir:
-	var facing = (low >> (PACKED_POS_SIZE * 3)) & PACKED_FACING_MASK;
+	var facing = (low >> (PACKED_AXIS_SIZE * 5)) & PACKED_FACING_MASK;
 	// Unpacked texture ID:
 	var texture = high & PACKED_TEXTURE_MASK;
 	
@@ -46,8 +51,8 @@ fn vertex(
 	
 	let basis = get_face_basis(facing);
     
-    let u = f32(vertex_index == 1u || vertex_index == 2u);
-    let v = f32(vertex_index >= 2u);
+    let u = f32(vertex_index == 1 || vertex_index == 2) * size.x;
+    let v = f32(vertex_index >= 2) * size.y;
     
     let vertex_offset = basis.origin + (u * basis.u_axis) + (v * basis.v_axis);
     let vertex_pos = voxel_pos + vertex_offset;
