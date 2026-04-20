@@ -6,8 +6,7 @@ use tavcubed::realm::block::BlockId;
 use tavcubed::realm::block::data::registry::BlockRegistryInner;
 use tavcubed::realm::block::data::{Block, BlockTexture};
 use tavcubed::realm::chunk::mesh::mesh_chunk;
-use tavcubed::realm::chunk::voxel::Voxel;
-use tavcubed::realm::chunk::{CHUNK_VOXEL_COUNT, Chunk};
+use tavcubed::realm::chunk::{CHUNK_VOXEL_COUNT, Chunk, Voxel};
 
 fn get_registry() -> BlockRegistryInner {
     let mut registry = BlockRegistryInner::default();

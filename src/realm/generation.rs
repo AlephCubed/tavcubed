@@ -1,6 +1,5 @@
 use crate::realm::block::data::registry::BlockRegistry;
-use crate::realm::chunk::voxel::Voxel;
-use crate::realm::chunk::{Chunk, ChunkPos};
+use crate::realm::chunk::{Chunk, ChunkPos, Voxel};
 use bevy::math::u8vec3;
 use bevy::prelude::*;
 use bevy::tasks::AsyncComputeTaskPool;
@@ -85,14 +84,16 @@ fn generate_perlin_chunk(
                     let height = BASE + (sample * AMPLITUDE) as u8;
 
                     for y in 0..(height - 1) {
-                        chunk[u8vec3(x, y, z)] = Some(Voxel::new(
-                            registry.voxel_id(&"core:stone".try_into().unwrap()),
-                        ));
+                        chunk.set_pos(
+                            u8vec3(x, y, z),
+                            Voxel::new(registry.voxel_id(&"core:stone".try_into().unwrap())).into(),
+                        );
                     }
 
-                    chunk[u8vec3(x, height - 1, z)] = Some(Voxel::new(
-                        registry.voxel_id(&"core:grass".try_into().unwrap()),
-                    ));
+                    chunk.set_pos(
+                        u8vec3(x, height - 1, z),
+                        Voxel::new(registry.voxel_id(&"core:grass".try_into().unwrap())).into(),
+                    );
                 }
             }
 

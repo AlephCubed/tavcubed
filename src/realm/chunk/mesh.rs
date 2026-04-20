@@ -80,8 +80,7 @@ fn mesh_changed_chunks(
 
 /// Creates a mesh from a chunk.
 pub fn mesh_chunk(chunk: Chunk, registry: &BlockRegistryInner) -> Mesh {
-    let voxel_count = chunk.iter().filter(|v| v.is_some()).count();
-    let face_estimate = voxel_count * 3; // Estimate half faces.
+    let face_estimate = chunk.len() * 3; // Estimate half faces.
 
     let mut indices = Vec::with_capacity(face_estimate * INDICES_PER_FACE);
     let mut packed: Vec<[u32; 2]> = Vec::with_capacity(face_estimate * VERTICES_PER_FACE);

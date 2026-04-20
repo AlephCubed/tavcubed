@@ -36,6 +36,12 @@ impl VoxelId {
     }
 }
 
+impl From<NonZeroU16> for VoxelId {
+    fn from(value: NonZeroU16) -> Self {
+        Self(value)
+    }
+}
+
 /// The *stable* ID of a [`Block`]. This is determined by the [block data](Block),
 /// and is constant across sessions.
 ///

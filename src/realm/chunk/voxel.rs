@@ -10,7 +10,7 @@ pub const STRIDE_Z: usize = DIAMETER * DIAMETER;
 pub type VoxelBuffer = [Option<Voxel>; CHUNK_VOXEL_COUNT];
 
 impl Chunk {
-    #[inline]
+    #[inline(always)]
     pub fn index_to_pos(index: usize) -> U8Vec3 {
         debug_assert!(
             index < CHUNK_VOXEL_COUNT,
@@ -23,7 +23,7 @@ impl Chunk {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn pos_to_index(pos: U8Vec3) -> usize {
         debug_assert!(
             pos.x < DIAMETER as u8,
@@ -52,6 +52,10 @@ pub struct Voxel {
 impl Voxel {
     pub fn new(id: VoxelId) -> Self {
         Self { id }
+    }
+
+    pub fn new_unwrap(id: u16) -> Self {
+        Self::new(VoxelId::new(id).unwrap())
     }
 }
 

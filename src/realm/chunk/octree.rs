@@ -13,6 +13,15 @@ pub struct Octree {
 }
 
 impl Octree {
+    pub const fn full(voxel: Voxel) -> Self {
+        Self {
+            buffer: [OctreeNode {
+                voxel: Some(voxel),
+                flags: OctreeNodeFlag::UNIFORM_FLAG,
+            }; OCTREE_NODE_COUNT],
+        }
+    }
+
     /// Returns the depth of a node at the given index.
     #[inline(always)]
     const fn get_depth(index: usize) -> u32 {
