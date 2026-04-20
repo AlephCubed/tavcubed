@@ -1,9 +1,11 @@
 pub mod mesh;
-mod octree;
+pub mod octree;
 pub mod voxel;
 
+use octree::*;
+use voxel::*;
+
 use crate::realm::chunk::mesh::ChunkMesh;
-use crate::realm::chunk::voxel::Voxel;
 use bevy::math::U8Vec3;
 use bevy::prelude::*;
 use std::fmt::Formatter;
@@ -21,12 +23,16 @@ pub type IterMut<'a> = core::slice::IterMut<'a, Option<Voxel>>;
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[require(ChunkMesh, ChunkPos)]
 pub struct Chunk {
+    octree: Octree,
     buffer: VoxelBuffer,
 }
 
 impl Chunk {
     pub fn new(buffer: VoxelBuffer) -> Self {
-        Self { buffer }
+        Self {
+            buffer,
+            ..default()
+        }
     }
 
     pub fn checkerboard() -> Self {
@@ -106,6 +112,7 @@ impl Chunk {
     #[inline]
     pub fn clear(&mut self) {
         self.buffer = [None; CHUNK_VOXEL_COUNT];
+        self.octree = Octree::default();
     }
 }
 
@@ -168,6 +175,7 @@ impl Default for Chunk {
     fn default() -> Self {
         Self {
             buffer: [None; CHUNK_VOXEL_COUNT],
+            octree: Octree::default(),
         }
     }
 }

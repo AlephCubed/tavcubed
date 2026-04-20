@@ -44,8 +44,8 @@ impl Octree {
     const fn child_index(index: usize) -> usize {
         // Todo optimize.
         let depth = Self::get_depth(index);
-        let offset = Octree::relative_index(index);
-        Octree::depth_first_index(depth + 1) + offset * 8
+        let offset = Self::relative_index(index);
+        Self::depth_first_index(depth + 1) + offset * 8
     }
 
     /// Returns the index of the parent of the given node.
@@ -56,8 +56,16 @@ impl Octree {
         debug_assert_ne!(index, 0, "Root node (0) has no parent");
         // Todo optimize.
         let depth = Self::get_depth(index);
-        let offset = Octree::relative_index(index);
-        Octree::depth_first_index(depth - 1) + offset / 8
+        let offset = Self::relative_index(index);
+        Self::depth_first_index(depth - 1) + offset / 8
+    }
+}
+
+impl Default for Octree {
+    fn default() -> Self {
+        Self {
+            buffer: [OctreeNode::default(); OCTREE_NODE_COUNT],
+        }
     }
 }
 
