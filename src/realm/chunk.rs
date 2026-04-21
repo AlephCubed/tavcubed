@@ -121,6 +121,20 @@ impl Chunk {
         self.get(Self::pos_to_index(pos))
     }
 
+    /// Returns a [`ChunkRef`] to the value at a specific index.
+    #[inline]
+    #[must_use]
+    pub fn get_ref(&self, index: usize) -> ChunkRef<'_> {
+        ChunkRef::new(self, index)
+    }
+
+    /// Returns a [`ChunkRef`] to the value at a specific position.
+    #[inline]
+    #[must_use]
+    pub fn get_ref_pos(&self, pos: U8Vec3) -> ChunkRef<'_> {
+        self.get_ref(Self::pos_to_index(pos))
+    }
+
     /// Sets the value at a specific index, returning the previous value.
     #[inline]
     pub fn set(&mut self, index: usize, voxel: Option<Voxel>) -> Option<Voxel> {
@@ -172,6 +186,28 @@ impl Chunk {
     #[inline]
     pub fn clear(&mut self) {
         *self = Self::default();
+    }
+
+    /// Returns an iterator over all nodes/voxels at a given depth in the tree.
+    ///
+    /// # Panics
+    /// Panics if `depth` is greater than [`OCTREE_DEPTH`].
+    pub fn iter_depth(
+        &self,
+        depth: u32,
+    ) -> VoxelGroupIter<impl Iterator<Item = ChunkRef<'_>>, impl Iterator<Item = OctreeRef<'_>>>
+    {
+        debug_assert!(
+            depth <= (OCTREE_DEPTH as u32 + 1),
+            "Depth must be less than or equal to {}, got {}",
+            OCTREE_DEPTH + 1,
+            depth
+        );
+
+        match depth == (OCTREE_DEPTH as u32 + 1) {
+            true => VoxelGroupIter::Chunk((0..CHUNK_VOXEL_COUNT).map(|i| self.get_ref(i))),
+            false => VoxelGroupIter::Octree(self.octree.iter_depth(depth)),
+        }
     }
 }
 

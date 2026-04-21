@@ -1,12 +1,15 @@
+mod reference;
+
+pub use reference::*;
+
 use crate::debug_asset_valid_voxel_pos;
 use crate::realm::chunk::voxel::Voxel;
 use crate::realm::chunk::{DIAMETER, STRIDE_Y, STRIDE_Z};
 use bevy::math::U8Vec3;
 use bitflags::bitflags;
-use std::ops::{Index, Range};
+use std::ops::Range;
 
-pub const OCTREE_DEPTH: usize = DIAMETER / 8;
-// 8(8^n - 1)/7 where n is the depth of the tree.
+pub const OCTREE_DEPTH: usize = DIAMETER / 8; // 8(8^n - 1)/7 where n is the depth of the tree.
 pub const OCTREE_NODE_COUNT: usize = (8 * 8usize.pow(OCTREE_DEPTH as u32) - 1) / 7;
 
 const LEAF_START: usize = Octree::depth_first_index(OCTREE_DEPTH as u32);
@@ -24,7 +27,7 @@ impl Octree {
         Self {
             buffer: [OctreeNode {
                 voxel: Some(voxel),
-                flags: OctreeNodeFlag::UNIFORM_FLAG,
+                flags: OctreeNodeFlag::UNIFORM,
             }; OCTREE_NODE_COUNT],
         }
     }
@@ -120,6 +123,34 @@ impl Octree {
             (offset / (grid_size * grid_size)) as u8,
         ) * U8Vec3::splat(voxel_size as u8)
     }
+
+    /// Returns a reference to the root node.
+    #[inline]
+    pub fn root(&self) -> OctreeRef<'_> {
+        OctreeRef::new(self, 0)
+    }
+
+    /// Returns a reference to the parent of the voxel at the given position.
+    #[inline]
+    pub fn get_leaf_pos(&self, pos: U8Vec3) -> OctreeRef<'_> {
+        OctreeRef::new(self, Self::pos_to_leaf_index(pos))
+    }
+
+    /// Returns an iterator over all nodes at a given depth in the tree.
+    ///
+    /// # Panics
+    /// Panics if `depth` is greater than or equal to [`OCTREE_DEPTH`].
+    pub fn iter_depth(&self, depth: u32) -> impl Iterator<Item = OctreeRef<'_>> {
+        debug_assert!(
+            depth <= OCTREE_DEPTH as u32,
+            "Depth must be less than {OCTREE_DEPTH}, got {depth}"
+        );
+
+        let start = Self::depth_first_index(depth);
+        let end = start + Self::depth_size(depth);
+
+        (start..end).map(|i| OctreeRef::new(self, i))
+    }
 }
 
 impl Default for Octree {
@@ -146,11 +177,20 @@ impl OctreeNode {
     }
 }
 
+impl From<Option<Voxel>> for OctreeNode {
+    fn from(value: Option<Voxel>) -> Self {
+        Self {
+            voxel: value,
+            flags: OctreeNodeFlag::default(),
+        }
+    }
+}
+
 bitflags! {
     #[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
     pub struct OctreeNodeFlag: u8 {
-        const UNIFORM_FLAG = 1 << 0;
-        const MINORITY_FLAG = 1 << 1;
+        const UNIFORM = 1 << 0;
+        const MINORITY = 1 << 1;
     }
 }
 
