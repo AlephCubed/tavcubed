@@ -74,12 +74,12 @@ impl BlockId {
 
     /// Returns the mod portion of the block ID.
     pub fn mod_id(&self) -> &str {
-        &self.split().0
+        self.split().0
     }
 
     /// Returns the block portion of the block ID.
     pub fn block_id(&self) -> &str {
-        &self.split().1
+        self.split().1
     }
 }
 

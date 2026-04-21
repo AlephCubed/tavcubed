@@ -126,7 +126,7 @@ impl std::fmt::Display for LoadedChunks {
                 for z in 0..BUFFER_DIAMETER {
                     write!(f, "{}", self[ivec3(x as i32, y as i32, z as i32)])?;
                 }
-                write!(f, "\n")?;
+                writeln!(f)?;
             }
             writeln!(f)?;
         }

@@ -104,7 +104,7 @@ pub fn load_core_blocks(mut commands: Commands, mut images: ResMut<Assets<Image>
     debug!("Created texture array");
 
     // Register all block types.
-    for (block_data, texture) in block_data.into_iter().zip(texture_refs.into_iter()) {
+    for (block_data, texture) in block_data.into_iter().zip(texture_refs) {
         registry.register(Block {
             id: block_data.id,
             name: block_data.name,

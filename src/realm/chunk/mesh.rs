@@ -172,6 +172,7 @@ fn mesh_finished(
 }
 
 #[inline]
+#[allow(clippy::identity_op)]
 pub const fn get_indices(index: u32) -> [u32; INDICES_PER_FACE] {
     [
         index + 0,
