@@ -5,7 +5,7 @@ use std::hint::black_box;
 use tavcubed::realm::block::BlockId;
 use tavcubed::realm::block::data::registry::BlockRegistryInner;
 use tavcubed::realm::block::data::{Block, BlockTexture};
-use tavcubed::realm::chunk::mesh::mesh_chunk;
+use tavcubed::realm::chunk::mesh::{ChunkLOD, mesh_chunk};
 use tavcubed::realm::chunk::{CHUNK_VOXEL_COUNT, Chunk, Voxel};
 
 fn get_registry() -> BlockRegistryInner {
@@ -25,7 +25,7 @@ fn mesh_chunk_empty(c: &mut Criterion) {
     c.bench_function("Mesh chunk empty", |b| {
         b.iter_batched(
             || chunk.clone(),
-            |chunk| black_box(mesh_chunk(chunk, &registry)),
+            |chunk| black_box(mesh_chunk(chunk, ChunkLOD::default(), &registry)),
             BatchSize::SmallInput,
         )
     });
@@ -38,7 +38,7 @@ fn mesh_chunk_full(c: &mut Criterion) {
     c.bench_function("Mesh chunk full", |b| {
         b.iter_batched(
             || chunk.clone(),
-            |chunk| black_box(mesh_chunk(chunk, &registry)),
+            |chunk| black_box(mesh_chunk(chunk, ChunkLOD::default(), &registry)),
             BatchSize::SmallInput,
         )
     });
@@ -51,7 +51,7 @@ fn mesh_chunk_checkerboard(c: &mut Criterion) {
     c.bench_function("Mesh chunk checkerboard", |b| {
         b.iter_batched(
             || chunk.clone(),
-            |chunk| black_box(mesh_chunk(chunk, &registry)),
+            |chunk| black_box(mesh_chunk(chunk, ChunkLOD::default(), &registry)),
             BatchSize::SmallInput,
         )
     });

@@ -5,6 +5,7 @@ mod voxel;
 pub use octree::*;
 pub use voxel::*;
 
+use crate::realm::chunk::mesh::ChunkLOD;
 use crate::realm::chunk::mesh::ChunkMesh;
 use bevy::math::U8Vec3;
 use bevy::prelude::*;
@@ -22,7 +23,7 @@ pub type Iter<'a> = core::slice::Iter<'a, Option<Voxel>>;
 pub type IterMut<'a> = core::slice::IterMut<'a, Option<Voxel>>;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[require(ChunkMesh, ChunkPos)]
+#[require(ChunkMesh, ChunkPos, ChunkLOD)]
 pub struct Chunk {
     octree: Octree,
     buffer: VoxelBuffer,

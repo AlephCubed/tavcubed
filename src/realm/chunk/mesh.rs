@@ -7,7 +7,7 @@ use crate::realm::block::data::BlockFace;
 use crate::realm::block::data::registry::{BlockRegistry, BlockRegistryInner};
 use crate::realm::chunk::mesh::material::ChunkMaterial;
 use crate::realm::chunk::mesh::packed_data::{VoxelData, pack};
-use crate::realm::chunk::{Chunk, ChunkPos, STRIDE_X, STRIDE_Y, STRIDE_Z};
+use crate::realm::chunk::{Chunk, ChunkPos, OCTREE_DEPTH, VoxelGroupRef};
 use bevy::asset::RenderAssetUsages;
 use bevy::ecs::bundle::InsertMode;
 use bevy::ecs::system::entity_command::insert;
@@ -39,6 +39,42 @@ impl ChunkMesh {
         MeshVertexAttribute::new("packed_data", 806567756968, VertexFormat::Uint32x2);
 }
 
+#[doc(alias = "ChunkLevelOfDetail")]
+#[derive(Component, Deref, Debug, Eq, PartialEq, Clone, Copy)]
+pub struct ChunkLOD(u32);
+
+impl Default for ChunkLOD {
+    fn default() -> Self {
+        Self(OCTREE_DEPTH as u32 + 1)
+    }
+}
+
+impl ChunkLOD {
+    pub fn new(lod: u32) -> Self {
+        assert!(
+            lod <= OCTREE_DEPTH as u32 + 1,
+            "LOD must be less than or equal to {}, got {}",
+            OCTREE_DEPTH + 1,
+            lod
+        );
+        Self(lod)
+    }
+
+    pub fn set(&mut self, lod: u32) {
+        assert!(
+            lod <= OCTREE_DEPTH as u32 + 1,
+            "LOD must be less than or equal to {}, got {}",
+            OCTREE_DEPTH + 1,
+            lod
+        );
+        self.0 = lod;
+    }
+
+    pub fn get(&self) -> u32 {
+        self.0
+    }
+}
+
 /// A channel to send finished meshes through to be applied.
 #[derive(Resource)]
 struct ChunkMeshChannel {
@@ -56,22 +92,23 @@ struct ChunkMeshFinished {
 fn mesh_changed_chunks(
     channel: Res<ChunkMeshChannel>,
     registry: Res<BlockRegistry>,
-    chunks: Query<(Entity, &Chunk), Changed<Chunk>>,
+    chunks: Query<(Entity, &Chunk, &ChunkLOD), Or<(Changed<Chunk>, Changed<ChunkLOD>)>>,
 ) {
     let pool = AsyncComputeTaskPool::get();
 
-    for (entity, chunk) in &chunks {
+    for (entity, chunk, lod) in &chunks {
         let sender = channel.sender.clone();
 
         trace!("Meshing {entity}");
 
         let chunk = *chunk;
+        let lod = *lod;
         let registry = registry.clone();
 
         pool.spawn(async move {
             _ = sender.send(ChunkMeshFinished {
                 chunk: entity,
-                mesh: mesh_chunk(chunk, &registry),
+                mesh: mesh_chunk(chunk, lod, &registry),
             });
         })
         .detach();
@@ -79,47 +116,49 @@ fn mesh_changed_chunks(
 }
 
 /// Creates a mesh from a chunk.
-pub fn mesh_chunk(chunk: Chunk, registry: &BlockRegistryInner) -> Mesh {
+pub fn mesh_chunk(chunk: Chunk, lod: ChunkLOD, registry: &BlockRegistryInner) -> Mesh {
     let face_estimate = chunk.len() * 3; // Estimate half faces.
 
     let mut indices = Vec::with_capacity(face_estimate * INDICES_PER_FACE);
     let mut packed: Vec<[u32; 2]> = Vec::with_capacity(face_estimate * VERTICES_PER_FACE);
 
-    for (full_index, voxel) in chunk.iter_full() {
-        let pos = Chunk::index_to_pos(full_index);
+    for group in chunk.iter_depth(lod.0) {
+        if group.voxel().is_none() {
+            continue;
+        }
 
         let data = VoxelData {
-            position: pos,
-            size: U8Vec2::new(1, 1),
-            texture: registry[voxel.id].texture,
+            position: group.pos(),
+            size: U8Vec2::splat(group.size()),
+            texture: registry[group.voxel().unwrap().id].texture,
         };
 
-        if pos.x == 31 || chunk[full_index + STRIDE_X].is_none() {
+        if !group.right_is_some() {
             indices.extend(get_indices(packed.len() as u32));
             packed.extend([pack(data, BlockFace::Right); 4]);
         }
 
-        if pos.x == 0 || chunk[full_index - STRIDE_X].is_none() {
+        if !group.left_is_some() {
             indices.extend(get_indices(packed.len() as u32));
             packed.extend([pack(data, BlockFace::Left); 4]);
         }
 
-        if pos.y == 31 || chunk[full_index + STRIDE_Y].is_none() {
+        if !group.up_is_some() {
             indices.extend(get_indices(packed.len() as u32));
             packed.extend([pack(data, BlockFace::Top); 4]);
         }
 
-        if pos.y == 0 || chunk[full_index - STRIDE_Y].is_none() {
+        if !group.down_is_some() {
             indices.extend(get_indices(packed.len() as u32));
             packed.extend([pack(data, BlockFace::Bottom); 4]);
         }
 
-        if pos.z == 31 || chunk[full_index + STRIDE_Z].is_none() {
+        if !group.backward_is_some() {
             indices.extend(get_indices(packed.len() as u32));
             packed.extend([pack(data, BlockFace::Back); 4]);
         }
 
-        if pos.z == 0 || chunk[full_index - STRIDE_Z].is_none() {
+        if !group.forward_is_some() {
             indices.extend(get_indices(packed.len() as u32));
             packed.extend([pack(data, BlockFace::Front); 4]);
         }
