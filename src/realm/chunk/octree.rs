@@ -3,6 +3,7 @@ use crate::realm::chunk::voxel::Voxel;
 use crate::realm::chunk::{DIAMETER, STRIDE_Y, STRIDE_Z};
 use bevy::math::U8Vec3;
 use bitflags::bitflags;
+use std::ops::{Index, Range};
 
 pub const OCTREE_DEPTH: usize = DIAMETER / 8;
 // 8(8^n - 1)/7 where n is the depth of the tree.
@@ -63,6 +64,19 @@ impl Octree {
         Self::depth_first_index(depth + 1) + offset * 8
     }
 
+    /// Returns the range of indices of the given node's children.
+    #[inline]
+    const fn children_indices(index: usize) -> Range<usize> {
+        let index = Self::child_index(index);
+        index..(index + 8)
+    }
+
+    /// Returns an iterator over the children of the given node.
+    #[inline]
+    fn children(&self, index: usize) -> impl Iterator<Item = &OctreeNode> {
+        Self::children_indices(index).map(|i| &self.buffer[i])
+    }
+
     /// Returns the index of the parent of the given node.
     /// # Panics
     /// If the node is root (0).
@@ -73,6 +87,12 @@ impl Octree {
         let depth = Self::get_depth(index);
         let offset = Self::relative_index(index);
         Self::depth_first_index(depth - 1) + offset / 8
+    }
+
+    /// Returns the parent of the given node.
+    #[inline]
+    fn parent(&self, index: usize) -> &OctreeNode {
+        &self.buffer[Self::parent_index(index)]
     }
 
     /// Converts a voxel position to its parents octree node index.
