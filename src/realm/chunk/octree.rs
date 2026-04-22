@@ -9,7 +9,8 @@ use bevy::math::U8Vec3;
 use bitflags::bitflags;
 use std::ops::Range;
 
-pub const OCTREE_DEPTH: usize = DIAMETER / 8; // 8(8^n - 1)/7 where n is the depth of the tree.
+pub const OCTREE_DEPTH: usize = DIAMETER / 8;
+// 8(8^n - 1)/7 where n is the depth of the tree.
 pub const OCTREE_NODE_COUNT: usize = (8 * 8usize.pow(OCTREE_DEPTH as u32) - 1) / 7;
 
 const LEAF_START: usize = Octree::depth_first_index(OCTREE_DEPTH as u32);
@@ -51,9 +52,27 @@ impl Octree {
         8usize.pow(depth)
     }
 
+    /// Returns width of nodes in the given depth.
+    #[inline(always)]
+    const fn depth_diameter(depth: u32) -> usize {
+        2usize.pow(depth)
+    }
+
+    /// Returns the number of voxel descendants each node has at the given depth.
+    #[inline(always)]
+    const fn depth_voxel_size(depth: u32) -> usize {
+        2usize.pow((OCTREE_DEPTH as u32 - depth + 1) * 3)
+    }
+
+    /// Returns the width in voxels of each node at the given depth.
+    #[inline(always)]
+    const fn depth_voxel_diameter(depth: u32) -> usize {
+        2usize.pow(OCTREE_DEPTH as u32 - depth + 1)
+    }
+
     /// Returns the index of a node relative to its depth.
     #[inline(always)]
-    const fn relative_index(index: usize) -> usize {
+    const fn depth_relative_index(index: usize) -> usize {
         // Todo optimize.
         index - Self::depth_first_index(Self::get_depth(index))
     }
@@ -63,7 +82,7 @@ impl Octree {
     const fn child_index(index: usize) -> usize {
         // Todo optimize.
         let depth = Self::get_depth(index);
-        let offset = Self::relative_index(index);
+        let offset = Self::depth_relative_index(index);
         Self::depth_first_index(depth + 1) + offset * 8
     }
 
@@ -88,7 +107,7 @@ impl Octree {
         debug_assert_ne!(index, 0, "Root node (0) has no parent");
         // Todo optimize.
         let depth = Self::get_depth(index);
-        let offset = Self::relative_index(index);
+        let offset = Self::depth_relative_index(index);
         Self::depth_first_index(depth - 1) + offset / 8
     }
 
@@ -113,7 +132,7 @@ impl Octree {
     #[inline]
     fn node_index_to_pos(index: usize) -> U8Vec3 {
         let depth = Self::get_depth(index);
-        let offset = Self::relative_index(index);
+        let offset = Self::depth_relative_index(index);
         let grid_size = LEAF_DIAMETER >> (OCTREE_DEPTH as u32 - depth); // 2^depth nodes per axis.
         let voxel_size = DIAMETER as u32 >> depth; // Voxels per node side.
 
@@ -227,20 +246,20 @@ mod tests {
 
     #[test]
     fn relative_index_0() {
-        assert_eq!(Octree::relative_index(0), 0);
+        assert_eq!(Octree::depth_relative_index(0), 0);
     }
 
     #[test]
     fn relative_index_1() {
         for i in 1..9 {
-            assert_eq!(Octree::relative_index(i), i - 1);
+            assert_eq!(Octree::depth_relative_index(i), i - 1);
         }
     }
 
     #[test]
     fn relative_index_2() {
         for i in 9..73 {
-            assert_eq!(Octree::relative_index(i), i - 9);
+            assert_eq!(Octree::depth_relative_index(i), i - 9);
         }
     }
 
@@ -370,5 +389,18 @@ mod tests {
         assert_eq!(Octree::node_index_to_pos(6), U8Vec3::new(16, 00, 16));
         assert_eq!(Octree::node_index_to_pos(7), U8Vec3::new(00, 16, 16));
         assert_eq!(Octree::node_index_to_pos(8), U8Vec3::new(16, 16, 16));
+    }
+
+    #[test]
+    fn depth_measurements() {
+        assert_eq!(Octree::depth_size(0), 1);
+        assert_eq!(Octree::depth_size(1), 8);
+        assert_eq!(Octree::depth_size(2), 64);
+        assert_eq!(Octree::depth_size(3), 512);
+
+        assert_eq!(Octree::depth_diameter(0), 1);
+        assert_eq!(Octree::depth_diameter(1), 2);
+        assert_eq!(Octree::depth_diameter(2), 4);
+        assert_eq!(Octree::depth_diameter(3), 8);
     }
 }
