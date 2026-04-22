@@ -231,7 +231,26 @@ impl<'a> OctreeRef<'a> {
         })
     }
 
-    pub fn children(&self) -> Option<impl Iterator<Item = OctreeRef<'_>>> {
+    /// Returns an iterator over the node's children (nodes or voxels).
+    ///
+    /// Use [`child_nodes`](Self::child_nodes) to loop over only nodes,
+    /// or [`iter_voxels`](Self::iter_voxels) to loop over only the voxels.
+    pub fn children(
+        &'a self,
+        chunk: &'a Chunk,
+    ) -> VoxelGroupIter<impl Iterator<Item = ChunkRef<'a>>, impl Iterator<Item = OctreeRef<'a>>>
+    {
+        match self.is_leaf_node() {
+            true => VoxelGroupIter::Chunk(self.iter_voxels(chunk)),
+            false => VoxelGroupIter::Octree(self.child_nodes().unwrap()),
+        }
+    }
+
+    /// Returns an iterator over the node's child nodes. Returns none if the node is a [leaf](Self::is_leaf_node).
+    ///
+    /// Use [`iter_voxels`](Self::iter_voxels) to loop over only the voxels,
+    /// or [`children`](Self::children) to loop over either.
+    pub fn child_nodes(&self) -> Option<impl Iterator<Item = OctreeRef<'_>>> {
         if self.is_leaf_node() {
             return None;
         }
@@ -240,5 +259,10 @@ impl<'a> OctreeRef<'a> {
             octree: self.octree,
             index: i,
         }))
+    }
+
+    /// Returns a [`ChunkRef`] iterator including all voxels that are descendants of the current node.
+    pub fn iter_voxels(&'a self, chunk: &'a Chunk) -> impl Iterator<Item = ChunkRef<'a>> {
+        Octree::iter_voxel_indices(self.index).map(|i| chunk.get_ref(i))
     }
 }

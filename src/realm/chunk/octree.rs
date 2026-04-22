@@ -4,7 +4,7 @@ pub use reference::*;
 
 use crate::debug_asset_valid_voxel_pos;
 use crate::realm::chunk::voxel::Voxel;
-use crate::realm::chunk::{DIAMETER, STRIDE_Y, STRIDE_Z};
+use crate::realm::chunk::{Chunk, DIAMETER, STRIDE_X, STRIDE_Y, STRIDE_Z};
 use bevy::math::U8Vec3;
 use bitflags::bitflags;
 use std::ops::Range;
@@ -141,6 +141,21 @@ impl Octree {
             ((offset / grid_size) % grid_size) as u8,
             (offset / (grid_size * grid_size)) as u8,
         ) * U8Vec3::splat(voxel_size as u8)
+    }
+
+    /// Returns a voxel index iterator including all voxels that are descendants of the given node.
+    fn iter_voxel_indices(index: usize) -> impl Iterator<Item = usize> {
+        let depth = Self::get_depth(index);
+        let size = Octree::depth_voxel_size(depth);
+        let start = Chunk::pos_to_index(Octree::node_index_to_pos(index));
+        let d = Octree::depth_voxel_diameter(depth);
+
+        (0..size).map(move |i| {
+            let x = (i % d) * STRIDE_X;
+            let y = (i / d) % d * STRIDE_Y;
+            let z = (i / (d * d)) * STRIDE_Z;
+            start + x + y + z
+        })
     }
 
     /// Returns a reference to the root node.
@@ -402,5 +417,13 @@ mod tests {
         assert_eq!(Octree::depth_diameter(1), 2);
         assert_eq!(Octree::depth_diameter(2), 4);
         assert_eq!(Octree::depth_diameter(3), 8);
+    }
+
+    #[test]
+    fn octree_ref_voxel_indices() {
+        assert_eq!(
+            Octree::iter_voxel_indices(LEAF_START).collect::<Vec<_>>(),
+            vec![0, 1, 32, 33, 1024, 1025, 1056, 1057]
+        );
     }
 }
