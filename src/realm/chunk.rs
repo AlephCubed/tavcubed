@@ -46,13 +46,14 @@ impl Chunk {
     }
 
     #[must_use]
-    pub fn checkerboard() -> Self {
+    pub fn checkerboard(a: Option<Voxel>, b: Option<Voxel>) -> Self {
         let mut chunk = Self::default();
 
         for i in 0..CHUNK_VOXEL_COUNT {
-            if Chunk::index_to_pos(i).element_sum().is_multiple_of(2) {
-                chunk.set(i, Voxel::default().into());
-            }
+            match Chunk::index_to_pos(i).element_sum().is_multiple_of(2) {
+                true => chunk.set(i, a.into()),
+                false => chunk.set(i, b.into()),
+            };
         }
 
         chunk

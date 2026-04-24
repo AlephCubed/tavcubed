@@ -45,7 +45,7 @@ fn mesh_chunk_full(c: &mut Criterion) {
 }
 
 fn mesh_chunk_checkerboard(c: &mut Criterion) {
-    let chunk = Chunk::checkerboard();
+    let chunk = Chunk::checkerboard(Some(Voxel::default()), None);
     let registry = get_registry();
 
     c.bench_function("Mesh chunk checkerboard", |b| {
