@@ -195,7 +195,7 @@ impl Chunk {
     pub fn iter_depth(
         &self,
         depth: u32,
-    ) -> VoxelGroupIter<impl Iterator<Item = ChunkRef<'_>>, impl Iterator<Item = OctreeRef<'_>>>
+    ) -> VoxelGroupIter<'_, impl Iterator<Item = ChunkRef<'_>>, impl Iterator<Item = OctreeRef<'_>>>
     {
         debug_assert!(
             depth <= (OCTREE_DEPTH as u32 + 1),

@@ -7,6 +7,7 @@ use crate::realm::chunk::voxel::Voxel;
 use crate::realm::chunk::{Chunk, DIAMETER, STRIDE_X, STRIDE_Y, STRIDE_Z};
 use bevy::math::U8Vec3;
 use bitflags::bitflags;
+use std::collections::HashMap;
 use std::ops::Range;
 
 pub const OCTREE_DEPTH: usize = DIAMETER / 8;
@@ -158,22 +159,32 @@ impl Octree {
         })
     }
 
-    /// Updates the value of the given leaf node, returning true if a change occurs.
-    fn update_leaf_node(&mut self, index: usize, chunk: &Chunk) -> bool {
-        let mut counts = [0u8; 8];
-        let mut non_empty_count = 0;
-        let mut max = (0u8, None);
+    fn update(&mut self, voxel: usize, chunk: &Chunk) {
+        let voxel = ChunkRef::new(chunk, voxel);
+        let mut current = voxel.parent();
 
-        for (c, voxel) in Self::iter_voxel_indices(index).enumerate() {
+        while self.update_node(current, chunk)
+            && let Some(parent) = current.parent()
+        {
+            current = parent;
+        }
+    }
+
+    fn update_node(&mut self, node: OctreeRef, chunk: &Chunk) -> bool {
+        let mut counts = HashMap::<Option<Voxel>, u8>::with_capacity(8);
+        let mut non_empty_count = 0;
+        let mut max = (None, 0u8);
+
+        for (c, r) in node.children(chunk).enumerate() {
             if c == 0 {
-                let is_some = chunk[voxel].is_some() as u8;
-                counts[0] = is_some;
+                let is_some = r.voxel().is_some() as u8;
+                counts.insert(r.voxel(), is_some);
                 non_empty_count = is_some;
-                max = (is_some, chunk[voxel]);
+                max = (r.voxel(), is_some);
                 continue;
             }
 
-            if chunk[voxel].is_none() {
+            if r.voxel().is_none() {
                 continue;
             }
 
@@ -182,36 +193,39 @@ impl Octree {
 
             non_empty_count += 1;
 
-            for i in (0..=c).rev() {
-                if chunk[voxel - i] == chunk[voxel] {
-                    counts[c - i] += 1;
+            if let Some(value) = counts.get_mut(&r.voxel()) {
+                *value += 1;
 
-                    if counts[c - i] > max.0 {
-                        max = (counts[c - i], chunk[voxel]);
-                    }
-
-                    break;
+                if *value > max.1 {
+                    max = (r.voxel(), *value);
                 }
+
+                continue;
+            } else {
+                counts.insert(r.voxel(), 1);
             }
         }
 
         let mut flags = OctreeNodeFlag::empty();
 
-        flags.set(OctreeNodeFlag::UNIFORM, max.0 == 8 || max.0 == 0);
+        flags.set(
+            OctreeNodeFlag::UNIFORM,
+            uniform && (max.1 == 8 || non_empty_count == 0),
+        );
         flags.set(
             OctreeNodeFlag::MINORITY,
             non_empty_count > 0 && non_empty_count < 4,
         );
 
-        let node = OctreeNode {
-            voxel: max.1,
+        let new_node = OctreeNode {
+            voxel: max.0,
             flags,
         };
 
-        if node == self.buffer[index] {
+        if new_node == node.node() {
             false
         } else {
-            self.buffer[index] = node;
+            self.buffer[node.index] = new_node;
             true
         }
     }
@@ -248,7 +262,10 @@ impl Octree {
 impl Default for Octree {
     fn default() -> Self {
         Self {
-            buffer: [OctreeNode::default(); OCTREE_NODE_COUNT],
+            buffer: [OctreeNode {
+                voxel: None,
+                flags: OctreeNodeFlag::UNIFORM,
+            }; OCTREE_NODE_COUNT],
         }
     }
 }
@@ -492,7 +509,7 @@ mod tests {
         let mut chunk = Chunk::default();
         let mut octree = Octree::default();
 
-        assert!(octree.update_leaf_node(LEAF_START, &mut chunk));
+        octree.update(0, &mut chunk);
         assert_eq!(
             octree.buffer[LEAF_START],
             OctreeNode {
@@ -535,7 +552,7 @@ mod tests {
         let mut chunk = Chunk::full(Voxel::default());
         let mut octree = Octree::default();
 
-        assert!(octree.update_leaf_node(LEAF_START, &mut chunk));
+        octree.update(0, &mut chunk);
         assert_eq!(
             octree.buffer[LEAF_START],
             OctreeNode {
@@ -579,7 +596,7 @@ mod tests {
         let mut chunk = Chunk::checkerboard(Some(Voxel::default()), Some(Voxel::new_unwrap(2)));
         let mut octree = Octree::default();
 
-        assert!(octree.update_leaf_node(LEAF_START, &mut chunk));
+        octree.update(0, &mut chunk);
         assert_eq!(
             octree.buffer[LEAF_START],
             OctreeNode {
@@ -596,7 +613,7 @@ mod tests {
 
         let mut octree = Octree::default();
 
-        assert!(octree.update_leaf_node(LEAF_START, &mut chunk));
+        octree.update(0, &mut chunk);
         assert_eq!(
             octree.buffer[LEAF_START],
             OctreeNode {
@@ -611,7 +628,7 @@ mod tests {
         let mut chunk = Chunk::checkerboard(Some(Voxel::default()), None);
         let mut octree = Octree::default();
 
-        assert!(octree.update_leaf_node(LEAF_START, &mut chunk));
+        octree.update(0, &mut chunk);
         assert_eq!(
             octree.buffer[LEAF_START],
             OctreeNode {
@@ -627,7 +644,7 @@ mod tests {
         chunk.set(0, Some(Voxel::default()));
         let mut octree = Octree::default();
 
-        assert!(octree.update_leaf_node(LEAF_START, &mut chunk));
+        octree.update(0, &mut chunk);
         assert_eq!(
             octree.buffer[LEAF_START],
             OctreeNode {
@@ -654,7 +671,7 @@ mod tests {
 
         let mut octree = Octree::default();
 
-        assert!(octree.update_leaf_node(LEAF_START, &mut chunk));
+        octree.update(0, &mut chunk);
         assert_eq!(
             octree.buffer[LEAF_START],
             OctreeNode {

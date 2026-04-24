@@ -229,7 +229,7 @@ impl<'a> ChunkRef<'a> {
         self.index
     }
 
-    pub fn parent(&self) -> OctreeRef<'a> {
+    pub fn parent(self) -> OctreeRef<'a> {
         OctreeRef {
             octree: &self.chunk.octree,
             index: Octree::pos_to_leaf_index(self.pos()),
@@ -240,7 +240,7 @@ impl<'a> ChunkRef<'a> {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct OctreeRef<'a> {
     octree: &'a Octree,
-    index: usize,
+    pub(super) index: usize,
 }
 
 impl Debug for OctreeRef<'_> {
@@ -435,7 +435,7 @@ impl<'a> OctreeRef<'a> {
     pub fn children(
         &'a self,
         chunk: &'a Chunk,
-    ) -> VoxelGroupIter<impl Iterator<Item = ChunkRef<'a>>, impl Iterator<Item = OctreeRef<'a>>>
+    ) -> VoxelGroupIter<'a, impl Iterator<Item = ChunkRef<'a>>, impl Iterator<Item = OctreeRef<'a>>>
     {
         match self.is_leaf_node() {
             true => VoxelGroupIter::Chunk(self.iter_voxels(chunk)),
