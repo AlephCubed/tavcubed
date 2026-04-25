@@ -34,7 +34,8 @@ impl Chunk {
     pub fn new(buffer: VoxelBuffer) -> Self {
         Self {
             buffer,
-            ..default()
+            octree: Octree::new(&buffer),
+            len: buffer.iter().filter(|i| i.is_some()).count(),
         }
     }
 
@@ -48,16 +49,16 @@ impl Chunk {
 
     #[must_use]
     pub fn checkerboard(a: Option<Voxel>, b: Option<Voxel>) -> Self {
-        let mut chunk = Self::default();
+        let mut voxels = [None; CHUNK_VOXEL_COUNT];
 
         for i in 0..CHUNK_VOXEL_COUNT {
             match Chunk::index_to_pos(i).element_sum().is_multiple_of(2) {
-                true => chunk.set(i, a.into()),
-                false => chunk.set(i, b.into()),
+                true => *voxel = a,
+                false => *voxel = b,
             };
         }
 
-        chunk
+        Self::new(voxels)
     }
 
     /// Returns the number of non-empty voxels in the chunk.
@@ -138,8 +139,19 @@ impl Chunk {
     /// Sets the value at a specific index, returning the previous value.
     #[inline]
     pub fn set(&mut self, index: usize, voxel: Option<Voxel>) -> Option<Voxel> {
-        self.len += self[index].is_none() as usize - voxel.is_none() as usize;
-        std::mem::replace(&mut self.buffer[index], voxel)
+        if self.buffer[index] == voxel {
+            voxel
+        } else {
+            match (self[index].is_some(), voxel.is_some()) {
+                (true, false) => self.len -= 1,
+                (false, true) => self.len += 1,
+                (_, _) => {}
+            }
+
+            let old = std::mem::replace(&mut self.buffer[index], voxel);
+            self.octree.update(index, &self.buffer);
+            old
+        }
     }
 
     /// Sets the value at a specific position, returning the previous value.
@@ -154,6 +166,7 @@ impl Chunk {
         match self[index] {
             None => {
                 self.buffer[index] = Some(voxel);
+                self.octree.update(index, &self.buffer);
                 self.len += 1;
                 Ok(())
             }
@@ -170,10 +183,14 @@ impl Chunk {
     /// Erases the voxel at the specified index and returns it.
     #[inline]
     pub fn erase(&mut self, index: usize) -> Option<Voxel> {
-        let temp = self[index];
-        self.buffer[index] = None;
-        self.len -= 1;
-        temp
+        if self.buffer[index].is_none() {
+            None
+        } else {
+            self.len -= 1;
+            let old = self.buffer[index].take();
+            self.octree.update(index, &self.buffer);
+            old
+        }
     }
 
     /// Erases the voxel at the specified position and returns it.

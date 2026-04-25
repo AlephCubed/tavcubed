@@ -4,7 +4,7 @@ pub use reference::*;
 
 use crate::debug_asset_valid_voxel_pos;
 use crate::realm::chunk::voxel::Voxel;
-use crate::realm::chunk::{Chunk, VoxelBuffer, DIAMETER, STRIDE_X, STRIDE_Y, STRIDE_Z};
+use crate::realm::chunk::{Chunk, DIAMETER, STRIDE_X, STRIDE_Y, STRIDE_Z, VoxelBuffer};
 use bevy::math::U8Vec3;
 use bitflags::bitflags;
 use std::collections::HashMap;
@@ -174,7 +174,7 @@ impl Octree {
         })
     }
 
-    fn update(&mut self, voxel: usize, voxels: &VoxelBuffer) {
+    pub(super) fn update(&mut self, voxel: usize, voxels: &VoxelBuffer) {
         let mut current = Self::pos_to_leaf_index(Chunk::index_to_pos(voxel));
 
         while self.update_node(current, voxels) && current != 0 {
