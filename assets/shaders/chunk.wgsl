@@ -51,8 +51,8 @@ fn vertex(
 	
 	let basis = get_face_basis(facing);
     
-    let u = f32(vertex_index == 1 || vertex_index == 2) * size.x;
-    let v = f32(vertex_index >= 2) * size.y;
+    let u = f32(vertex_index == 1 || vertex_index == 2) * (size.x + 1);
+    let v = f32(vertex_index >= 2) * (size.y + 1);
     
     let vertex_offset = basis.origin + (u * basis.u_axis) + (v * basis.v_axis);
     let vertex_pos = voxel_pos + vertex_offset;

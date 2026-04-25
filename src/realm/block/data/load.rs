@@ -1,6 +1,7 @@
 use crate::realm::block::data::registry::{BlockRegistry, BlockRegistryInner};
 use crate::realm::block::data::{Block, BlockData, BlockTexture, BlockTextureData};
 use bevy::asset::RenderAssetUsages;
+use bevy::image::{ImageAddressMode, ImageSampler, ImageSamplerDescriptor};
 use bevy::prelude::*;
 use bevy::render::render_resource::{
     Extent3d, TextureDimension, TextureFormat, TextureViewDescriptor, TextureViewDimension,
@@ -95,6 +96,11 @@ pub fn load_core_blocks(mut commands: Commands, mut images: ResMut<Assets<Image>
     );
     texture_array.texture_view_descriptor = Some(TextureViewDescriptor {
         dimension: Some(TextureViewDimension::D2Array),
+        ..default()
+    });
+    texture_array.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor {
+        address_mode_u: ImageAddressMode::Repeat,
+        address_mode_v: ImageAddressMode::Repeat,
         ..default()
     });
 
