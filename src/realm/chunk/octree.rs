@@ -4,7 +4,7 @@ pub use reference::*;
 
 use crate::debug_asset_valid_voxel_pos;
 use crate::realm::chunk::voxel::Voxel;
-use crate::realm::chunk::{Chunk, DIAMETER, STRIDE_X, STRIDE_Y, STRIDE_Z, VoxelBuffer};
+use crate::realm::chunk::{Chunk, VoxelBuffer, DIAMETER, STRIDE_X, STRIDE_Y, STRIDE_Z};
 use bevy::math::U8Vec3;
 use bitflags::bitflags;
 use std::collections::HashMap;
@@ -25,6 +25,21 @@ pub struct Octree {
 }
 
 impl Octree {
+    pub fn new(voxels: &VoxelBuffer) -> Self {
+        let mut octree = Octree::default();
+
+        for depth in (0..=OCTREE_DEPTH).rev() {
+            let start = Self::depth_first_index(depth as u32);
+            let size = Self::depth_size(depth as u32);
+
+            for node in start..(start + size) {
+                octree.update_node(node, voxels);
+            }
+        }
+
+        octree
+    }
+
     pub const fn full(voxel: Voxel) -> Self {
         Self {
             buffer: [OctreeNode {
