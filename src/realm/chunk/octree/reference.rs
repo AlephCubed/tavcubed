@@ -1,6 +1,6 @@
 use crate::realm::chunk::{
     Chunk, DIAMETER, OCTREE_DEPTH, Octree, OctreeNode, OctreeNodeFlag, STRIDE_X, STRIDE_Y,
-    STRIDE_Z, Voxel,
+    STRIDE_Z, Voxel, VoxelBuffer,
 };
 use bevy::math::U8Vec3;
 use std::fmt::{Debug, Formatter};
@@ -66,7 +66,7 @@ pub trait VoxelGroupRef {
 
 pub enum VoxelGroupIter<'a, C, O>
 where
-    C: Iterator<Item = ChunkRef<'a>>,
+    C: Iterator<Item = VoxelRef<'a>>,
     O: Iterator<Item = OctreeRef<'a>>,
 {
     Chunk(C),
@@ -75,14 +75,14 @@ where
 
 impl<'a, C, O> Iterator for VoxelGroupIter<'a, C, O>
 where
-    C: Iterator<Item = ChunkRef<'a>>,
+    C: Iterator<Item = VoxelRef<'a>>,
     O: Iterator<Item = OctreeRef<'a>>,
 {
     type Item = DynVoxelGroupRef<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
-            Self::Chunk(it) => it.next().map(DynVoxelGroupRef::Chunk),
+            Self::Chunk(it) => it.next().map(DynVoxelGroupRef::Voxel),
             Self::Octree(it) => it.next().map(DynVoxelGroupRef::Octree),
         }
     }
@@ -90,7 +90,7 @@ where
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum DynVoxelGroupRef<'a> {
-    Chunk(ChunkRef<'a>),
+    Voxel(VoxelRef<'a>),
     Octree(OctreeRef<'a>),
 }
 
@@ -98,7 +98,7 @@ macro_rules! defer {
     (fn $name:ident(&self) -> $ty:ty) => {
         fn $name(&self) -> $ty {
             match self {
-                DynVoxelGroupRef::Chunk(r) => r.$name(),
+                DynVoxelGroupRef::Voxel(r) => r.$name(),
                 DynVoxelGroupRef::Octree(r) => r.$name(),
             }
         }
@@ -106,7 +106,7 @@ macro_rules! defer {
     (map fn $name:ident(&self) -> $ty:ty) => {
         fn $name(&self) -> $ty {
             match self {
-                DynVoxelGroupRef::Chunk(r) => r.$name().map(DynVoxelGroupRef::Chunk),
+                DynVoxelGroupRef::Voxel(r) => r.$name().map(DynVoxelGroupRef::Voxel),
                 DynVoxelGroupRef::Octree(r) => r.$name().map(DynVoxelGroupRef::Octree),
             }
         }
@@ -130,15 +130,15 @@ impl VoxelGroupRef for DynVoxelGroupRef<'_> {
 impl Debug for DynVoxelGroupRef<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            DynVoxelGroupRef::Chunk(r) => write!(f, "Dyn{r:?}"),
+            DynVoxelGroupRef::Voxel(r) => write!(f, "Dyn{r:?}"),
             DynVoxelGroupRef::Octree(r) => write!(f, "Dyn{r:?}"),
         }
     }
 }
 
-impl<'a> From<ChunkRef<'a>> for DynVoxelGroupRef<'a> {
-    fn from(octree: ChunkRef<'a>) -> Self {
-        DynVoxelGroupRef::Chunk(octree)
+impl<'a> From<VoxelRef<'a>> for DynVoxelGroupRef<'a> {
+    fn from(octree: VoxelRef<'a>) -> Self {
+        DynVoxelGroupRef::Voxel(octree)
     }
 }
 
@@ -149,29 +149,29 @@ impl<'a> From<OctreeRef<'a>> for DynVoxelGroupRef<'a> {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ChunkRef<'a> {
-    chunk: &'a Chunk,
+pub struct VoxelRef<'a> {
+    voxels: &'a VoxelBuffer,
     index: usize,
 }
 
-impl Debug for ChunkRef<'_> {
+impl Debug for VoxelRef<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ChunkRef<{:p}>[{}]", &self.chunk, self.index)
+        write!(f, "VoxelRef<{:p}>[{}]", &self.voxels, self.index)
     }
 }
 
-impl<'a> Deref for ChunkRef<'a> {
+impl<'a> Deref for VoxelRef<'a> {
     type Target = Option<Voxel>;
 
     fn deref(&self) -> &Self::Target {
-        &self.chunk[self.index]
+        &self.voxels[self.index]
     }
 }
 
 #[expect(clippy::manual_is_multiple_of)]
-impl VoxelGroupRef for ChunkRef<'_> {
+impl VoxelGroupRef for VoxelRef<'_> {
     fn voxel(&self) -> Option<Voxel> {
-        self.chunk[self.index]
+        self.voxels[self.index]
     }
 
     fn flags(&self) -> OctreeNodeFlag {
@@ -191,49 +191,49 @@ impl VoxelGroupRef for ChunkRef<'_> {
     }
 
     fn right(&self) -> Option<Self> {
-        (self.index % STRIDE_Y < DIAMETER - 1).then(|| self.chunk.get_ref(self.index + STRIDE_X))
+        (self.index % STRIDE_Y < DIAMETER - 1)
+            .then(|| VoxelRef::new(self.voxels, self.index + STRIDE_X))
     }
 
     fn left(&self) -> Option<Self> {
-        (self.index % STRIDE_Y > 0).then(|| self.chunk.get_ref(self.index - STRIDE_X))
+        (self.index % STRIDE_Y > 0).then(|| VoxelRef::new(self.voxels, self.index - STRIDE_X))
     }
 
     fn up(&self) -> Option<Self> {
         ((self.index / STRIDE_Y) % STRIDE_Y < DIAMETER - 1)
-            .then(|| self.chunk.get_ref(self.index + STRIDE_Y))
+            .then(|| VoxelRef::new(self.voxels, self.index + STRIDE_Y))
     }
 
     fn down(&self) -> Option<Self> {
-        ((self.index / STRIDE_Y) % STRIDE_Y > 0).then(|| self.chunk.get_ref(self.index - STRIDE_Y))
+        ((self.index / STRIDE_Y) % STRIDE_Y > 0)
+            .then(|| VoxelRef::new(self.voxels, self.index - STRIDE_Y))
     }
 
     fn backward(&self) -> Option<Self> {
-        (self.index / STRIDE_Z < DIAMETER - 1).then(|| self.chunk.get_ref(self.index + STRIDE_Z))
+        (self.index / STRIDE_Z < DIAMETER - 1)
+            .then(|| VoxelRef::new(self.voxels, self.index + STRIDE_Z))
     }
 
     fn forward(&self) -> Option<Self> {
-        (self.index / STRIDE_Z > 0).then(|| self.chunk.get_ref(self.index - STRIDE_Z))
+        (self.index / STRIDE_Z > 0).then(|| VoxelRef::new(self.voxels, self.index - STRIDE_Z))
     }
 }
 
-impl<'a> ChunkRef<'a> {
-    pub fn new(chunk: &'a Chunk, index: usize) -> Self {
-        Self { chunk, index }
+impl<'a> VoxelRef<'a> {
+    pub fn new(voxels: &'a VoxelBuffer, index: usize) -> Self {
+        Self { voxels, index }
     }
 
-    pub fn chunk(self) -> &'a Chunk {
-        self.chunk
+    pub fn voxels(self) -> &'a VoxelBuffer {
+        self.voxels
     }
 
     pub fn index(&self) -> usize {
         self.index
     }
 
-    pub fn parent(self) -> OctreeRef<'a> {
-        OctreeRef {
-            octree: &self.chunk.octree,
-            index: Octree::pos_to_leaf_index(self.pos()),
-        }
+    pub fn parent(self, octree: &'a Octree) -> OctreeRef<'a> {
+        OctreeRef::new(octree, Octree::pos_to_leaf_index(self.pos()))
     }
 }
 
@@ -434,11 +434,11 @@ impl<'a> OctreeRef<'a> {
     /// or [`iter_voxels`](Self::iter_voxels) to loop over only the voxels.
     pub fn children(
         &'a self,
-        chunk: &'a Chunk,
-    ) -> VoxelGroupIter<'a, impl Iterator<Item = ChunkRef<'a>>, impl Iterator<Item = OctreeRef<'a>>>
+        voxels: &'a VoxelBuffer,
+    ) -> VoxelGroupIter<'a, impl Iterator<Item = VoxelRef<'a>>, impl Iterator<Item = OctreeRef<'a>>>
     {
         match self.is_leaf_node() {
-            true => VoxelGroupIter::Chunk(self.iter_voxels(chunk)),
+            true => VoxelGroupIter::Chunk(self.iter_voxels(voxels)),
             false => VoxelGroupIter::Octree(self.child_nodes().unwrap()),
         }
     }
@@ -458,9 +458,9 @@ impl<'a> OctreeRef<'a> {
         }))
     }
 
-    /// Returns a [`ChunkRef`] iterator including all voxels that are descendants of the current node.
-    pub fn iter_voxels(&'a self, chunk: &'a Chunk) -> impl Iterator<Item = ChunkRef<'a>> {
-        Octree::iter_voxel_indices(self.index).map(|i| chunk.get_ref(i))
+    /// Returns a [`VoxelRef`] iterator including all voxels that are descendants of the current node.
+    pub fn iter_voxels(&'a self, voxels: &'a VoxelBuffer) -> impl Iterator<Item = VoxelRef<'a>> {
+        Octree::iter_voxel_indices(self.index).map(|i| VoxelRef::new(voxels, i))
     }
 }
 

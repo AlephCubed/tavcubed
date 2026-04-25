@@ -121,17 +121,17 @@ impl Chunk {
         self.get(Self::pos_to_index(pos))
     }
 
-    /// Returns a [`ChunkRef`] to the value at a specific index.
+    /// Returns a [`VoxelRef`] to the value at a specific index.
     #[inline]
     #[must_use]
-    pub fn get_ref(&self, index: usize) -> ChunkRef<'_> {
-        ChunkRef::new(self, index)
+    pub fn get_ref(&self, index: usize) -> VoxelRef<'_> {
+        VoxelRef::new(&self.buffer, index)
     }
 
-    /// Returns a [`ChunkRef`] to the value at a specific position.
+    /// Returns a [`VoxelRef`] to the value at a specific position.
     #[inline]
     #[must_use]
-    pub fn get_ref_pos(&self, pos: U8Vec3) -> ChunkRef<'_> {
+    pub fn get_ref_pos(&self, pos: U8Vec3) -> VoxelRef<'_> {
         self.get_ref(Self::pos_to_index(pos))
     }
 
@@ -195,7 +195,7 @@ impl Chunk {
     pub fn iter_depth(
         &self,
         depth: u32,
-    ) -> VoxelGroupIter<'_, impl Iterator<Item = ChunkRef<'_>>, impl Iterator<Item = OctreeRef<'_>>>
+    ) -> VoxelGroupIter<'_, impl Iterator<Item = VoxelRef<'_>>, impl Iterator<Item = OctreeRef<'_>>>
     {
         debug_assert!(
             depth <= (OCTREE_DEPTH as u32 + 1),
