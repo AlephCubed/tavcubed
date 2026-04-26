@@ -1,3 +1,4 @@
+pub mod debug;
 mod reference;
 
 pub use reference::*;
