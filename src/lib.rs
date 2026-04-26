@@ -1,14 +1,15 @@
 pub mod player;
 pub mod realm;
 
-use crate::player::PlayerPlugin;
+use crate::player::{Player, PlayerPlugin};
 use crate::realm::block::BlockPlugin;
-use crate::realm::chunk::OCTREE_DEPTH;
 use crate::realm::chunk::debug::{OctreeDebug, OctreeDebugPlugin};
 use crate::realm::chunk::mesh::ChunkLOD;
+use crate::realm::chunk::{Chunk, OCTREE_DEPTH, Voxel};
 use crate::realm::chunk_loading::{ChunkLoadingPlugin, ReloadChunks};
 use bevy::camera_controller::free_camera::FreeCameraPlugin;
 use bevy::log::LogPlugin;
+use bevy::math::u8vec3;
 use bevy::pbr::wireframe::{WireframeConfig, WireframePlugin};
 use bevy::prelude::*;
 use realm::chunk::mesh::ChunkMeshPlugin;
@@ -34,7 +35,7 @@ pub fn app() -> App {
         BlockPlugin,
         OctreeDebugPlugin,
     ))
-    .add_systems(Update, debug_keybinds);
+    .add_systems(Update, (debug_keybinds, debug_place_block));
 
     app
 }
@@ -90,5 +91,28 @@ fn debug_keybinds(
                 info!("Changed octree debug flags to {:?}", *octree_debug);
             }
         }
+    }
+}
+
+fn debug_place_block(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    player: Single<&Transform, With<Player>>,
+    mut chunk: Single<&mut Chunk>,
+) {
+    if !keyboard_input.just_pressed(KeyCode::KeyG) {
+        return;
+    }
+
+    let pos = u8vec3(
+        player.translation.x as u8,
+        player.translation.y as u8,
+        player.translation.z as u8,
+    );
+
+    if pos.x < 32 && pos.y < 32 && pos.z < 32 {
+        match chunk.get_pos(pos).is_some() {
+            true => chunk.set_pos(pos, None),
+            false => chunk.set_pos(pos, Voxel::new_unwrap(2).into()),
+        };
     }
 }

@@ -57,7 +57,7 @@ fn generate_perlin_chunk(
     for message in messages.read() {
         let sender = channel.sender.clone();
 
-        if message.position.y != 0 {
+        if message.position != IVec3::splat(0) {
             _ = sender.send(ChunkGenerationFinished {
                 pos: message.position,
                 chunk: None,
