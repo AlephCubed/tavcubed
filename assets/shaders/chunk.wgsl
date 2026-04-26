@@ -34,9 +34,9 @@ fn vertex(
 		f32((low >> PACKED_AXIS_SIZE) & PACKED_AXIS_MASK),
 		f32((low >> (PACKED_AXIS_SIZE * 2)) & PACKED_AXIS_MASK),
 	);
-	var size = vec2<f32>(
-		f32((low >> (PACKED_AXIS_SIZE * 3)) & PACKED_AXIS_MASK),
-		f32((low >> (PACKED_AXIS_SIZE * 4)) & PACKED_AXIS_MASK),
+	var scale = vec2<f32>(
+		f32((low >> (PACKED_AXIS_SIZE * 3)) & PACKED_AXIS_MASK) + 1,
+		f32((low >> (PACKED_AXIS_SIZE * 4)) & PACKED_AXIS_MASK) + 1,
 	);
 	
 	// Unpacked quad facing dir:
@@ -44,35 +44,41 @@ fn vertex(
 	// Unpacked texture ID:
 	var texture = high & PACKED_TEXTURE_MASK;
 	
-	var voxel_pos = voxel_offset + vec3<f32>(chunk_pos) * 32;
-	var vertex_index = global_vertex_index % 4;
-	
-	
-	
-	let basis = get_face_basis(facing);
-    
-    let u = f32(vertex_index == 1 || vertex_index == 2) * (size.x + 1);
-    let v = f32(vertex_index >= 2) * (size.y + 1);
-    
-    let vertex_offset = basis.origin + (u * basis.u_axis) + (v * basis.v_axis);
-    let vertex_pos = voxel_pos + vertex_offset;
+	var vertex_index = global_vertex_index % 4;	
+	let right = f32(vertex_index == 1u || vertex_index == 2u);
+	let up    = f32(vertex_index >= 2u);
+
+    let vertex_offset = get_face(facing, voxel_offset, scale, up, right);
+    let vertex_pos = vertex_offset + vec3<f32>(chunk_pos) * 32;
 	
 	
 	
 	var out: VertexOutput;
 	out.position = view.clip_from_world * vec4(vertex_pos, 1.0);
 	out.layer = texture;
-    out.uv = vec2<f32>(u, v);
+	out.uv = vec2(right * scale.x, up * scale.y);
 	
 	switch (facing) {
 		case 0: { // Top (y+)
 			out.brightness = 1;
 		}
 		case 1: { // Bot (y-)
-			out.brightness = 0.25;
+			out.brightness = 0.2;
+		}
+		case 2: { // Right (x+) 
+			out.brightness = 0.8;
+		}
+		case 3: { // Left (x-)
+			out.brightness = 0.6;		
+		}
+		case 4: { // Back (z+)
+			out.brightness = 0.7;
+		}
+		case 5: { // Front (z-)
+			out.brightness = 0.4;
 		}
 		default: {
-			out.brightness = max(vertex_offset.y, 0.25);
+			out.brightness = -1;
 		}
 	}
 	
@@ -88,30 +94,49 @@ struct FaceBasis {
     v_axis: vec3<f32>, 
 }
 
-fn get_face_basis(facing: u32) -> FaceBasis {
+fn get_face(facing: u32, voxel_pos: vec3<f32>, scale: vec2<f32>, up: f32, right: f32) -> vec3<f32> {
+    var origin: vec3<f32>;
+    var right_axis: vec3<f32>;
+    var up_axis: vec3<f32>;
+
     switch (facing) {
-        case 0: { // Top (+Y)
-            return FaceBasis(vec3(0,1,0), vec3(1,0,0), vec3(0,0,1));
+        case 0u: { // Top (+Y) - looking down, right=+X, up=+Z
+            origin     = voxel_pos + vec3(0.0, scale.y, 0.0);
+            right_axis = vec3(1.0, 0.0, 0.0);
+            up_axis    = vec3(0.0, 0.0, 1.0);
         }
-        case 1: { // Bottom (-Y)
-            return FaceBasis(vec3(0,0,1), vec3(1,0,0), vec3(0,0,-1));
+        case 1u: { // Bottom (-Y) - looking up, right=+X, up=+Z
+			origin     = voxel_pos + vec3(scale.x, 0.0, 0.0);
+			right_axis = vec3(-1.0, 0.0, 0.0);
+			up_axis    = vec3(0.0, 0.0, 1.0);
         }
-        case 2: { // Right (+X)
-            return FaceBasis(vec3(1,1,1), vec3(0,0,-1), vec3(0,-1,0));
+        case 2u: { // Right (+X) - looking left, right=+Z, up=+Y
+            origin     = voxel_pos + vec3(scale.x, 0.0, 0.0);
+            right_axis = vec3(0.0, 0.0, 1.0);
+            up_axis    = vec3(0.0, 1.0, 0.0);
         }
-        case 3: { // Left (-X)
-            return FaceBasis(vec3(0,1,0), vec3(0,0,1), vec3(0,-1,0));
+        case 3u: { // Left (-X) - looking right, right=+Z, up=+Y
+			origin     = voxel_pos + vec3(0.0, 0.0, scale.x);
+			right_axis = vec3(0.0, 0.0, -1.0);
+			up_axis    = vec3(0.0, 1.0, 0.0);
         }
-        case 4: { // Back (+Z)
-            return FaceBasis(vec3(0,1,1), vec3(1,0,0), vec3(0,-1,0));
+        case 4u: { // Back (+Z) - looking forward, right=+X, up=+Y
+            origin     = voxel_pos + vec3(scale.x, 0.0, scale.x);
+            right_axis = vec3(-1.0, 0.0, 0.0);
+            up_axis    = vec3(0.0, 1.0, 0.0);
         }
-        case 5: { // Front (-Z)
-            return FaceBasis(vec3(1,1,0), vec3(-1,0,0), vec3(0,-1,0));
+        case 5u: { // Front (-Z) - looking backward, right=+X, up=+Y
+            origin     = voxel_pos;
+            right_axis = vec3(1.0, 0.0, 0.0);
+            up_axis    = vec3(0.0, 1.0, 0.0);
         }
         default: {
-            return FaceBasis(vec3(0,0,0), vec3(1,0,0), vec3(0,1,0));
+            origin     = voxel_pos;
+            right_axis = vec3(1.0, 0.0, 0.0);
+            up_axis    = vec3(0.0, 1.0, 0.0);
         }
     }
+    return origin + right * right_axis * scale.x + up * up_axis * scale.y;
 }
 
 @fragment

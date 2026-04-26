@@ -400,7 +400,7 @@ mod tests {
     }
 
     #[test]
-    fn pos_to_leaf() {
+    fn pos_to_leaf_index() {
         assert_eq!(Octree::pos_to_leaf_index(U8Vec3::new(0, 0, 0)), LEAF_START);
         assert_eq!(Octree::pos_to_leaf_index(U8Vec3::new(1, 0, 0)), LEAF_START);
         assert_eq!(Octree::pos_to_leaf_index(U8Vec3::new(0, 1, 0)), LEAF_START);
@@ -412,7 +412,7 @@ mod tests {
     }
 
     #[test]
-    fn leaf_to_pos_x() {
+    fn node_index_to_pos_leaf_x() {
         assert_eq!(Octree::node_index_to_pos(LEAF_START), U8Vec3::new(0, 0, 0));
 
         assert_eq!(
@@ -430,7 +430,7 @@ mod tests {
     }
 
     #[test]
-    fn leaf_to_pos_y() {
+    fn node_index_to_pos_leaf_y() {
         assert_eq!(
             Octree::node_index_to_pos(LEAF_START + LEAF_DIAMETER),
             U8Vec3::new(0, 2, 0)
@@ -446,7 +446,7 @@ mod tests {
     }
 
     #[test]
-    fn leaf_to_pos_z() {
+    fn node_index_to_pos_leaf_z() {
         assert_eq!(
             Octree::node_index_to_pos(LEAF_START + LEAF_DIAMETER * LEAF_DIAMETER),
             U8Vec3::new(0, 0, 2)
@@ -462,7 +462,7 @@ mod tests {
     }
 
     #[test]
-    fn leaf_to_pos_last() {
+    fn node_index_to_pos_leaf_last() {
         assert_eq!(
             Octree::node_index_to_pos(OCTREE_NODE_COUNT - 1),
             U8Vec3::new(30, 30, 30)
@@ -470,12 +470,12 @@ mod tests {
     }
 
     #[test]
-    fn leaf_to_pos_root() {
+    fn node_index_to_pos_root() {
         assert_eq!(Octree::node_index_to_pos(0), U8Vec3::new(0, 0, 0));
     }
 
     #[test]
-    fn leaf_to_pos_depth_1() {
+    fn node_index_to_pos_depth_1() {
         assert_eq!(Octree::node_index_to_pos(1), U8Vec3::new(00, 00, 00));
         assert_eq!(Octree::node_index_to_pos(2), U8Vec3::new(16, 00, 00));
         assert_eq!(Octree::node_index_to_pos(3), U8Vec3::new(00, 16, 00));
