@@ -3,6 +3,7 @@ pub mod realm;
 
 use crate::player::PlayerPlugin;
 use crate::realm::block::BlockPlugin;
+use crate::realm::chunk::mesh::ChunkLOD;
 use crate::realm::chunk_loading::{ChunkLoadingPlugin, ReloadChunks};
 use bevy::camera_controller::free_camera::FreeCameraPlugin;
 use bevy::log::LogPlugin;
@@ -39,6 +40,7 @@ fn debug_keybinds(
     mut commands: Commands,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut wireframe_config: ResMut<WireframeConfig>,
+    mut lods: Query<&mut ChunkLOD>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Tab) {
         info!("Toggling Wireframe");
@@ -47,5 +49,25 @@ fn debug_keybinds(
 
     if keyboard_input.pressed(KeyCode::SuperLeft) & keyboard_input.just_pressed(KeyCode::KeyR) {
         commands.trigger(ReloadChunks);
+    }
+
+    let nums = [
+        KeyCode::Digit6,
+        KeyCode::Digit5,
+        KeyCode::Digit4,
+        KeyCode::Digit3,
+        KeyCode::Digit2,
+        KeyCode::Digit1,
+    ];
+
+    for (index, num) in nums.iter().enumerate() {
+        if keyboard_input.just_pressed(*num) {
+            for mut lod in &mut lods {
+                if lod.get() != index as u32 {
+                    info!("Changed LOD to {index}");
+                    lod.set(index as u32)
+                }
+            }
+        }
     }
 }
