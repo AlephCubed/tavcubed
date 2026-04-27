@@ -173,16 +173,9 @@ impl Octree {
         let mut counts = HashMap::<Option<Voxel>, u8>::with_capacity(8);
         let mut non_empty_count = 0;
         let mut max = (None, 0u8);
+        let mut uniform = true;
 
-        for (c, r) in node.children(voxels).enumerate() {
-            if c == 0 {
-                let is_some = r.voxel().is_some() as u8;
-                counts.insert(r.voxel(), is_some);
-                non_empty_count = is_some;
-                max = (r.voxel(), is_some);
-                continue;
-            }
-
+        for r in node.children(voxels) {
             if r.voxel().is_none() {
                 continue;
             }
@@ -192,16 +185,12 @@ impl Octree {
 
             non_empty_count += 1;
 
-            if let Some(value) = counts.get_mut(&r.voxel()) {
-                *value += 1;
+            if *count > max.1 {
+                max = (r.voxel(), *count);
+            }
 
-                if *value > max.1 {
-                    max = (r.voxel(), *value);
-                }
-
-                continue;
-            } else {
-                counts.insert(r.voxel(), 1);
+            if !r.flags().contains(OctreeNodeFlag::UNIFORM) {
+                uniform = false;
             }
         }
 
@@ -508,13 +497,17 @@ mod tests {
         let mut chunk = Chunk::default();
 
         chunk.octree.update(0, &chunk.buffer);
-        assert_eq!(
-            chunk.octree.buffer[LEAF_START],
-            OctreeNode {
-                voxel: None,
-                flags: OctreeNodeFlag::UNIFORM
-            }
-        )
+
+        for depth in 0..OCTREE_DEPTH {
+            assert_eq!(
+                chunk.octree.buffer[Octree::depth_first_index(depth as u32)],
+                OctreeNode {
+                    voxel: None,
+                    flags: OctreeNodeFlag::UNIFORM
+                },
+                "depth: {depth}"
+            );
+        }
     }
 
     #[test]
@@ -550,13 +543,64 @@ mod tests {
         let mut chunk = Chunk::full(Voxel::default());
 
         chunk.octree.update(0, &chunk.buffer);
-        assert_eq!(
-            chunk.octree.buffer[LEAF_START],
-            OctreeNode {
-                voxel: Some(Voxel::default()),
-                flags: OctreeNodeFlag::UNIFORM
+
+        for depth in 0..OCTREE_DEPTH {
+            assert_eq!(
+                chunk.octree.buffer[Octree::depth_first_index(depth as u32)],
+                OctreeNode {
+                    voxel: Some(Voxel::default()),
+                    flags: OctreeNodeFlag::UNIFORM
+                },
+                "depth: {depth}"
+            );
+        }
+    }
+
+    #[test]
+    fn update_full_uniform_using_parent() {
+        for i in 0..CHUNK_VOXEL_COUNT {
+            let mut chunk = Chunk::full(Voxel::default());
+
+            chunk.octree.update(i, &chunk.buffer);
+
+            let r = chunk.get_ref(i);
+            let mut parent = r.parent(&chunk.octree);
+
+            loop {
+                assert_eq!(
+                    parent.node(),
+                    OctreeNode {
+                        voxel: Some(Voxel::default()),
+                        flags: OctreeNodeFlag::UNIFORM
+                    },
+                    "Current ref: {parent:?}"
+                );
+
+                match parent.parent() {
+                    Some(p) => parent = p,
+                    None => break,
+                }
             }
-        )
+        }
+    }
+
+    #[test]
+    fn update_single_voxel() {
+        let mut chunk = Chunk::default();
+        chunk.place(0, Voxel::default()).unwrap();
+
+        chunk.octree.update(0, &chunk.buffer);
+
+        for depth in 0..OCTREE_DEPTH {
+            assert_eq!(
+                chunk.octree.buffer[Octree::depth_first_index(depth as u32)],
+                OctreeNode {
+                    voxel: Some(Voxel::default()),
+                    flags: OctreeNodeFlag::MINORITY
+                },
+                "depth: {depth}"
+            );
+        }
     }
 
     #[test]
@@ -593,13 +637,16 @@ mod tests {
         let mut chunk = Chunk::checkerboard(Some(Voxel::default()), Some(Voxel::new_unwrap(2)));
 
         chunk.octree.update(0, &chunk.buffer);
-        assert_eq!(
-            chunk.octree.buffer[LEAF_START],
-            OctreeNode {
-                voxel: Some(Voxel::default()),
-                flags: OctreeNodeFlag::empty()
-            }
-        )
+        for depth in 0..OCTREE_DEPTH {
+            assert_eq!(
+                chunk.octree.buffer[Octree::depth_first_index(depth as u32)],
+                OctreeNode {
+                    voxel: Some(Voxel::default()),
+                    flags: OctreeNodeFlag::empty()
+                },
+                "depth: {depth}"
+            );
+        }
     }
 
     #[test]
