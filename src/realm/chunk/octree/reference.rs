@@ -737,4 +737,120 @@ mod tests {
         assert_eq!(OctreeRef::new(&octree, 73).size(), 4);
         assert_eq!(OctreeRef::new(&octree, LEAF_START).size(), 2);
     }
+
+    #[test]
+    fn octree_ref_pos_first() {
+        let chunk = Chunk::default();
+
+        let r = chunk.get_ref(0);
+        let mut parent = r.parent(&chunk.octree);
+
+        loop {
+            assert_eq!(parent.pos(), U8Vec3::default());
+
+            match parent.parent() {
+                Some(p) => parent = p,
+                None => break,
+            }
+        }
+    }
+
+    #[test]
+    fn octree_ref_pos_last() {
+        let chunk = Chunk::default();
+
+        let r = chunk.get_ref_pos(U8Vec3::splat(31));
+        let mut parent = r.parent(&chunk.octree);
+
+        // Depth 4
+        assert_eq!(parent.pos(), U8Vec3::splat(30));
+        parent = parent.parent().unwrap();
+        // Depth 3
+        assert_eq!(parent.pos(), U8Vec3::splat(28));
+        parent = parent.parent().unwrap();
+        // Depth 2
+        assert_eq!(parent.pos(), U8Vec3::splat(24));
+        parent = parent.parent().unwrap();
+        // Depth 1
+        assert_eq!(parent.pos(), U8Vec3::splat(16));
+        parent = parent.parent().unwrap();
+        // Depth 0
+        assert_eq!(parent.pos(), U8Vec3::splat(0));
+        assert!(parent.parent().is_none());
+    }
+
+    #[test]
+    fn octree_ref_pos_first_not_straight() {
+        let chunk = Chunk::default();
+
+        let r = chunk.get_ref_pos(U8Vec3::splat(2));
+        let mut parent = r.parent(&chunk.octree);
+
+        // Depth 4
+        assert_eq!(parent.pos(), U8Vec3::splat(2), "{parent:?}");
+        parent = parent.parent().unwrap();
+
+        loop {
+            assert_eq!(parent.pos(), U8Vec3::default(), "{parent:?}");
+
+            match parent.parent() {
+                Some(p) => parent = p,
+                None => break,
+            }
+        }
+    }
+
+    #[test]
+    fn octree_ref_pos_first_not_straight_specific() {
+        let first = Octree::depth_first_index(3);
+        let diameter = Octree::depth_diameter(3);
+
+        assert_eq!(
+            OctreeRef::new(
+                &Octree::default(),
+                first + diameter + diameter * diameter + 1
+            )
+            .pos(),
+            U8Vec3::splat(0)
+        );
+    }
+
+    #[test]
+    fn octree_pos_first_not_straight_specific_using_parent() {
+        // Depth 4
+        let leaf = Octree::pos_to_leaf_index(U8Vec3::splat(2));
+        assert_eq!(
+            leaf,
+            LEAF_START + LEAF_DIAMETER + LEAF_DIAMETER * LEAF_DIAMETER + 1
+        );
+        assert_eq!(Octree::node_index_to_pos(leaf), U8Vec3::splat(2));
+
+        let depth3 = Octree::parent_index(leaf);
+        assert_eq!(depth3, Octree::depth_first_index(3));
+        assert_eq!(Octree::node_index_to_pos(depth3), U8Vec3::splat(0));
+    }
+
+    #[test]
+    fn octree_ref_pos_last_not_straight() {
+        let chunk = Chunk::default();
+
+        let r = chunk.get_ref_pos(U8Vec3::splat(29));
+        let mut parent = r.parent(&chunk.octree);
+
+        // Depth 4
+        assert_eq!(parent.pos(), U8Vec3::splat(28), "{parent:?}");
+        parent = parent.parent().unwrap();
+        // Depth 3
+        assert_eq!(parent.pos(), U8Vec3::splat(28), "{parent:?}");
+        parent = parent.parent().unwrap();
+        // Depth 2
+        assert_eq!(parent.pos(), U8Vec3::splat(24), "{parent:?}");
+        parent = parent.parent().unwrap();
+        // Depth 1
+        assert_eq!(parent.pos(), U8Vec3::splat(16), "{parent:?}");
+        parent = parent.parent().unwrap();
+        // Depth 0
+        assert_eq!(parent.pos(), U8Vec3::splat(0), "{parent:?}");
+        assert!(parent.parent().is_none());
+    }
 }
