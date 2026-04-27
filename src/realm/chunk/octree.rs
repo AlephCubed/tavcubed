@@ -78,13 +78,14 @@ impl Octree {
     /// Returns the number of voxel descendants each node has at the given depth.
     #[inline(always)]
     const fn depth_voxel_size(depth: u32) -> usize {
-        2usize.pow((OCTREE_DEPTH as u32 - depth + 1) * 3)
+        let diameter = Self::depth_voxel_diameter(depth);
+        diameter * diameter * diameter
     }
 
     /// Returns the width in voxels of each node at the given depth.
     #[inline(always)]
     const fn depth_voxel_diameter(depth: u32) -> usize {
-        2usize.pow(OCTREE_DEPTH as u32 - depth + 1)
+        DIAMETER >> depth
     }
 
     /// Returns the index of a node relative to its depth.

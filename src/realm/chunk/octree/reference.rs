@@ -280,7 +280,7 @@ impl VoxelGroupRef for OctreeRef<'_> {
     }
 
     fn size(&self) -> u8 {
-        2u8.pow(OCTREE_DEPTH as u32 - self.depth() + 1)
+        Octree::depth_voxel_diameter(self.depth()) as u8
     }
 
     fn right(&self) -> Option<Self> {
