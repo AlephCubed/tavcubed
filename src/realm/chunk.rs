@@ -52,7 +52,7 @@ impl Chunk {
     pub fn checkerboard(a: Option<Voxel>, b: Option<Voxel>) -> Self {
         let mut voxels = [None; CHUNK_VOXEL_COUNT];
 
-        for i in 0..CHUNK_VOXEL_COUNT {
+        for (i, voxel) in voxels.iter_mut().enumerate() {
             match Chunk::index_to_pos(i).element_sum().is_multiple_of(2) {
                 true => *voxel = a,
                 false => *voxel = b,
