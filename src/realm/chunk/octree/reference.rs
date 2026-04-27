@@ -33,10 +33,10 @@ pub trait VoxelGroupRef {
 
     fn flags(&self) -> OctreeNodeFlag;
 
-    fn depth(&self) -> u32;
+    fn depth(&self) -> usize;
 
     fn is_voxel(&self) -> bool {
-        self.depth() == OCTREE_DEPTH as u32
+        self.depth() == (OCTREE_DEPTH + 1)
     }
 
     fn is_node(&self) -> bool {
@@ -48,7 +48,7 @@ pub trait VoxelGroupRef {
     }
 
     fn is_leaf_node(&self) -> bool {
-        self.depth() == (OCTREE_DEPTH as u32)
+        self.depth() == OCTREE_DEPTH
     }
 
     /// The chunk-space voxel position of the group's first (minimum corner) voxel.
@@ -116,7 +116,7 @@ macro_rules! defer {
 impl VoxelGroupRef for DynVoxelGroupRef<'_> {
     defer!(fn voxel(&self) -> Option<Voxel>);
     defer!(fn flags(&self) -> OctreeNodeFlag);
-    defer!(fn depth(&self) -> u32);
+    defer!(fn depth(&self) -> usize);
     defer!(fn pos(&self) -> U8Vec3);
     defer!(fn size(&self) -> u8);
     defer!(map fn right(&self) -> Option<Self>);
@@ -178,8 +178,8 @@ impl VoxelGroupRef for VoxelRef<'_> {
         OctreeNodeFlag::UNIFORM
     }
 
-    fn depth(&self) -> u32 {
-        OCTREE_DEPTH as u32 + 1
+    fn depth(&self) -> usize {
+        OCTREE_DEPTH + 1
     }
 
     fn pos(&self) -> U8Vec3 {
@@ -271,7 +271,7 @@ impl VoxelGroupRef for OctreeRef<'_> {
         self.node().flags()
     }
 
-    fn depth(&self) -> u32 {
+    fn depth(&self) -> usize {
         Octree::get_depth(self.index)
     }
 
@@ -280,7 +280,7 @@ impl VoxelGroupRef for OctreeRef<'_> {
     }
 
     fn size(&self) -> u8 {
-        Octree::depth_voxel_diameter(self.depth()) as u8
+        Octree::DEPTH_VOXEL_DIAMETER[self.depth()] as u8
     }
 
     fn right(&self) -> Option<Self> {
@@ -289,7 +289,7 @@ impl VoxelGroupRef for OctreeRef<'_> {
         }
 
         let index = Octree::depth_relative_index(self.index);
-        let depth_size = Octree::depth_size(self.depth());
+        let depth_size = Octree::DEPTH_SIZE[self.depth()];
         let cousin_stride_x = 8 - SIBLING_STRIDE_X;
 
         if index % 2 == 0 {
@@ -309,7 +309,7 @@ impl VoxelGroupRef for OctreeRef<'_> {
         }
 
         let index = Octree::depth_relative_index(self.index);
-        let depth_size = Octree::depth_size(self.depth());
+        let depth_size = Octree::DEPTH_SIZE[self.depth()];
         let cousin_stride_x = 8 - SIBLING_STRIDE_X;
 
         if index % 2 != 0 {
@@ -329,8 +329,8 @@ impl VoxelGroupRef for OctreeRef<'_> {
         }
 
         let index = Octree::depth_relative_index(self.index);
-        let depth_size = Octree::depth_size(self.depth());
-        let cousin_stride_y = 8 * (Octree::depth_diameter(self.depth()) / 2) - SIBLING_STRIDE_Y;
+        let depth_size = Octree::DEPTH_SIZE[self.depth()];
+        let cousin_stride_y = 8 * (Octree::DEPTH_DIAMETER[self.depth()] / 2) - SIBLING_STRIDE_Y;
 
         if (index / 2) % 2 == 0 {
             // Sibling
@@ -349,8 +349,8 @@ impl VoxelGroupRef for OctreeRef<'_> {
         }
 
         let index = Octree::depth_relative_index(self.index);
-        let depth_size = Octree::depth_size(self.depth());
-        let cousin_stride_y = 8 * (Octree::depth_diameter(self.depth()) / 2) - SIBLING_STRIDE_Y;
+        let depth_size = Octree::DEPTH_SIZE[self.depth()];
+        let cousin_stride_y = 8 * (Octree::DEPTH_DIAMETER[self.depth()] / 2) - SIBLING_STRIDE_Y;
 
         if (index / 2) % 2 != 0 {
             // Sibling
@@ -369,8 +369,8 @@ impl VoxelGroupRef for OctreeRef<'_> {
         }
 
         let index = Octree::depth_relative_index(self.index);
-        let depth_size = Octree::depth_size(self.depth());
-        let cousin_stride_z = 8 * Octree::depth_diameter(self.depth()) - SIBLING_STRIDE_Z;
+        let depth_size = Octree::DEPTH_SIZE[self.depth()];
+        let cousin_stride_z = 8 * Octree::DEPTH_DIAMETER[self.depth()] - SIBLING_STRIDE_Z;
 
         if (index / 4) % 2 == 0 {
             // Sibling
@@ -389,8 +389,8 @@ impl VoxelGroupRef for OctreeRef<'_> {
         }
 
         let index = Octree::depth_relative_index(self.index);
-        let depth_size = Octree::depth_size(self.depth());
-        let cousin_stride_z = 8 * Octree::depth_diameter(self.depth()) - SIBLING_STRIDE_Z;
+        let depth_size = Octree::DEPTH_SIZE[self.depth()];
+        let cousin_stride_z = 8 * Octree::DEPTH_DIAMETER[self.depth()] - SIBLING_STRIDE_Z;
 
         if (index / 4) % 2 != 0 {
             // Sibling
@@ -802,8 +802,8 @@ mod tests {
 
     #[test]
     fn octree_ref_pos_first_not_straight_specific() {
-        let first = Octree::depth_first_index(3);
-        let diameter = Octree::depth_diameter(3);
+        let first = Octree::DEPTH_START[3];
+        let diameter = Octree::DEPTH_DIAMETER[3];
 
         assert_eq!(
             OctreeRef::new(
@@ -826,7 +826,7 @@ mod tests {
         assert_eq!(Octree::node_index_to_pos(leaf), U8Vec3::splat(2));
 
         let depth3 = Octree::parent_index(leaf);
-        assert_eq!(depth3, Octree::depth_first_index(3));
+        assert_eq!(depth3, Octree::DEPTH_START[3]);
         assert_eq!(Octree::node_index_to_pos(depth3), U8Vec3::splat(0));
     }
 

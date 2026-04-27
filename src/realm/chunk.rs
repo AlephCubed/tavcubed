@@ -212,17 +212,17 @@ impl Chunk {
     /// Panics if `depth` is greater than [`OCTREE_DEPTH`].
     pub fn iter_depth(
         &self,
-        depth: u32,
+        depth: usize,
     ) -> VoxelGroupIter<'_, impl Iterator<Item = VoxelRef<'_>>, impl Iterator<Item = OctreeRef<'_>>>
     {
         debug_assert!(
-            depth <= (OCTREE_DEPTH as u32 + 1),
+            depth <= OCTREE_DEPTH + 1,
             "Depth must be less than or equal to {}, got {}",
             OCTREE_DEPTH + 1,
             depth
         );
 
-        match depth == (OCTREE_DEPTH as u32 + 1) {
+        match depth == OCTREE_DEPTH + 1 {
             true => VoxelGroupIter::Chunk((0..CHUNK_VOXEL_COUNT).map(|i| self.get_ref(i))),
             false => VoxelGroupIter::Octree(self.octree.iter_depth(depth)),
         }

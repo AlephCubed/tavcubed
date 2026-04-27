@@ -3,9 +3,9 @@ pub mod realm;
 
 use crate::player::PlayerPlugin;
 use crate::realm::block::BlockPlugin;
+use crate::realm::chunk::OCTREE_DEPTH;
 use crate::realm::chunk::debug::{OctreeDebug, OctreeDebugPlugin};
 use crate::realm::chunk::mesh::ChunkLOD;
-use crate::realm::chunk::OCTREE_DEPTH;
 use crate::realm::chunk_loading::{ChunkLoadingPlugin, ReloadChunks};
 use bevy::camera_controller::free_camera::FreeCameraPlugin;
 use bevy::log::LogPlugin;
@@ -69,8 +69,8 @@ fn debug_keybinds(
             // Change all chunk's LOD.
             if keyboard_input.pressed(KeyCode::SuperLeft) {
                 for mut lod in &mut lods {
-                    if lod.get() != index as u32 {
-                        lod.set(index as u32);
+                    if lod.get() != index {
+                        lod.set(index)
                     }
                 }
                 info!("Changed LOD to {index}");

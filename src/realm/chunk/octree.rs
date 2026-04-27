@@ -17,7 +17,7 @@ pub const OCTREE_DEPTH: usize = DIAMETER / 8;
 // 8(8^n - 1)/7 where n is the depth of the tree.
 pub const OCTREE_NODE_COUNT: usize = (8 * 8usize.pow(OCTREE_DEPTH as u32) - 1) / 7;
 
-const LEAF_START: usize = Octree::depth_first_index(OCTREE_DEPTH as u32);
+const LEAF_START: usize = Octree::DEPTH_START[OCTREE_DEPTH];
 const LEAF_DIAMETER: usize = 2usize.pow(OCTREE_DEPTH as u32);
 
 pub type OctreeBuffer = [OctreeNode; OCTREE_NODE_COUNT];
@@ -32,8 +32,8 @@ impl Octree {
         let mut octree = Octree::default();
 
         for depth in (0..=OCTREE_DEPTH).rev() {
-            let start = Self::depth_first_index(depth as u32);
-            let size = Self::depth_size(depth as u32);
+            let start = Self::DEPTH_START[depth];
+            let size = Self::DEPTH_SIZE[depth];
 
             for node in start..(start + size) {
                 octree.update_node(node, voxels);
@@ -54,47 +54,28 @@ impl Octree {
 
     /// Returns the depth of a node at the given index.
     #[inline(always)]
-    const fn get_depth(index: usize) -> u32 {
+    const fn get_depth(index: usize) -> usize {
         // ilog_8(7i + 1)) using log_8(x) = log_2(x)/3
-        (7 * index + 1).ilog2() / 3
+        ((7 * index + 1).ilog2() / 3) as usize
     }
 
-    /// Returns the index of the first node at the given depth.
-    #[inline(always)]
-    const fn depth_first_index(depth: u32) -> usize {
-        (Self::depth_size(depth) - 1) / 7
-    }
+    /// The width of nodes in each depth (`2^n`).
+    const DEPTH_DIAMETER: [usize; 5] = [1, 2, 4, 8, 16];
+    /// The number of nodes in each depth (`8^n`).
+    const DEPTH_SIZE: [usize; 5] = [1, 8, 64, 512, 4096];
+    /// The index of the first node for each depth (`(8^n - 1) / 7`).
+    const DEPTH_START: [usize; 5] = [0, 1, 9, 73, 585];
 
-    /// Returns the number of nodes in the given depth.
-    #[inline(always)]
-    const fn depth_size(depth: u32) -> usize {
-        8usize.pow(depth)
-    }
-
-    /// Returns width of nodes in the given depth.
-    #[inline(always)]
-    const fn depth_diameter(depth: u32) -> usize {
-        2usize.pow(depth)
-    }
-
-    /// Returns the number of voxel descendants each node has at the given depth.
-    #[inline(always)]
-    const fn depth_voxel_size(depth: u32) -> usize {
-        let diameter = Self::depth_voxel_diameter(depth);
-        diameter * diameter * diameter
-    }
-
-    /// Returns the width in voxels of each node at the given depth.
-    #[inline(always)]
-    const fn depth_voxel_diameter(depth: u32) -> usize {
-        DIAMETER >> depth
-    }
+    /// The width in voxels each node has in each depth (`32/(2^n`).
+    const DEPTH_VOXEL_DIAMETER: [usize; 5] = [32, 16, 8, 4, 2];
+    /// The number of voxel descendants each node has in each depth (`(32/(2^n)^3`).
+    const DEPTH_VOXEL_SIZE: [usize; 5] = [32768, 4096, 512, 64, 8];
 
     /// Returns the index of a node relative to its depth.
     #[inline(always)]
     const fn depth_relative_index(index: usize) -> usize {
         // Todo optimize.
-        index - Self::depth_first_index(Self::get_depth(index))
+        index - Self::DEPTH_START[Self::get_depth(index)]
     }
 
     /// Returns the index of the first child of the given node.
@@ -103,7 +84,7 @@ impl Octree {
         // Todo optimize.
         let depth = Self::get_depth(index);
         let offset = Self::depth_relative_index(index);
-        Self::depth_first_index(depth + 1) + offset * 8
+        Self::DEPTH_START[depth + 1] + offset * 8
     }
 
     /// Returns the range of indices of the given node's children.
@@ -128,7 +109,7 @@ impl Octree {
         // Todo optimize.
         let depth = Self::get_depth(index);
         let offset = Self::depth_relative_index(index);
-        Self::depth_first_index(depth - 1) + offset / 8
+        Self::DEPTH_START[depth - 1] + offset / 8
     }
 
     /// Returns the parent of the given node.
@@ -153,7 +134,7 @@ impl Octree {
         }
 
         let depth = Self::get_depth(index);
-        let voxel_diameter = Self::depth_voxel_diameter(depth);
+        let voxel_diameter = Self::DEPTH_VOXEL_DIAMETER[depth];
         let child_index = Self::depth_relative_index(index) % 8;
 
         let local = z_order_to_pos(child_index) * U8Vec3::splat(voxel_diameter as u8);
@@ -164,9 +145,9 @@ impl Octree {
     /// Returns a voxel index iterator including all voxels that are descendants of the given node.
     fn iter_voxel_indices(index: usize) -> impl Iterator<Item = usize> {
         let depth = Self::get_depth(index);
-        let size = Octree::depth_voxel_size(depth);
+        let size = Octree::DEPTH_VOXEL_SIZE[depth];
         let start = Chunk::pos_to_index(Octree::node_index_to_pos(index));
-        let d = Octree::depth_voxel_diameter(depth);
+        let d = Octree::DEPTH_VOXEL_DIAMETER[depth];
 
         (0..size).map(move |i| {
             let x = (i % d) * STRIDE_X;
@@ -251,14 +232,14 @@ impl Octree {
     ///
     /// # Panics
     /// Panics if `depth` is greater than or equal to [`OCTREE_DEPTH`].
-    pub fn iter_depth(&self, depth: u32) -> impl Iterator<Item = OctreeRef<'_>> {
+    pub fn iter_depth(&self, depth: usize) -> impl Iterator<Item = OctreeRef<'_>> {
         debug_assert!(
-            depth <= OCTREE_DEPTH as u32,
+            depth <= OCTREE_DEPTH,
             "Depth must be less than {OCTREE_DEPTH}, got {depth}"
         );
 
-        let start = Self::depth_first_index(depth);
-        let end = start + Self::depth_size(depth);
+        let start = Self::DEPTH_START[depth];
+        let end = start + Self::DEPTH_SIZE[depth];
 
         (start..end).map(|i| OctreeRef::new(self, i))
     }
@@ -331,14 +312,6 @@ mod tests {
         for i in 9..73 {
             assert_eq!(Octree::get_depth(i), 2);
         }
-    }
-
-    #[test]
-    fn depth_first_index() {
-        assert_eq!(Octree::depth_first_index(0), 0);
-        assert_eq!(Octree::depth_first_index(1), 1);
-        assert_eq!(Octree::depth_first_index(2), 9);
-        assert_eq!(Octree::depth_first_index(3), 73);
     }
 
     #[test]
@@ -490,15 +463,15 @@ mod tests {
 
     #[test]
     fn depth_measurements() {
-        assert_eq!(Octree::depth_size(0), 1);
-        assert_eq!(Octree::depth_size(1), 8);
-        assert_eq!(Octree::depth_size(2), 64);
-        assert_eq!(Octree::depth_size(3), 512);
+        assert_eq!(Octree::DEPTH_SIZE[0], 1);
+        assert_eq!(Octree::DEPTH_SIZE[1], 8);
+        assert_eq!(Octree::DEPTH_SIZE[2], 64);
+        assert_eq!(Octree::DEPTH_SIZE[3], 512);
 
-        assert_eq!(Octree::depth_diameter(0), 1);
-        assert_eq!(Octree::depth_diameter(1), 2);
-        assert_eq!(Octree::depth_diameter(2), 4);
-        assert_eq!(Octree::depth_diameter(3), 8);
+        assert_eq!(Octree::DEPTH_DIAMETER[0], 1);
+        assert_eq!(Octree::DEPTH_DIAMETER[1], 2);
+        assert_eq!(Octree::DEPTH_DIAMETER[2], 4);
+        assert_eq!(Octree::DEPTH_DIAMETER[3], 8);
     }
 
     #[test]
@@ -517,7 +490,7 @@ mod tests {
 
         for depth in 0..OCTREE_DEPTH {
             assert_eq!(
-                chunk.octree.buffer[Octree::depth_first_index(depth as u32)],
+                chunk.octree.buffer[Octree::DEPTH_START[depth]],
                 OctreeNode {
                     voxel: None,
                     flags: OctreeNodeFlag::UNIFORM
@@ -563,7 +536,7 @@ mod tests {
 
         for depth in 0..OCTREE_DEPTH {
             assert_eq!(
-                chunk.octree.buffer[Octree::depth_first_index(depth as u32)],
+                chunk.octree.buffer[Octree::DEPTH_START[depth]],
                 OctreeNode {
                     voxel: Some(Voxel::default()),
                     flags: OctreeNodeFlag::UNIFORM
@@ -610,7 +583,7 @@ mod tests {
 
         for depth in 0..OCTREE_DEPTH {
             assert_eq!(
-                chunk.octree.buffer[Octree::depth_first_index(depth as u32)],
+                chunk.octree.buffer[Octree::DEPTH_START[depth]],
                 OctreeNode {
                     voxel: Some(Voxel::default()),
                     flags: OctreeNodeFlag::MINORITY
@@ -656,7 +629,7 @@ mod tests {
         chunk.octree.update(0, &chunk.buffer);
         for depth in 0..OCTREE_DEPTH {
             assert_eq!(
-                chunk.octree.buffer[Octree::depth_first_index(depth as u32)],
+                chunk.octree.buffer[Octree::DEPTH_START[depth]],
                 OctreeNode {
                     voxel: Some(Voxel::default()),
                     flags: OctreeNodeFlag::empty()

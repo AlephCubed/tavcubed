@@ -65,7 +65,7 @@ fn render_octree_debug(
                 continue;
             }
 
-            for r in chunk.octree.iter_depth(depth as u32) {
+            for r in chunk.octree.iter_depth(depth) {
                 if r.voxel.is_none() {
                     continue;
                 }

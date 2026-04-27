@@ -41,18 +41,18 @@ impl ChunkMesh {
 
 #[doc(alias = "ChunkLevelOfDetail")]
 #[derive(Component, Deref, Debug, Eq, PartialEq, Clone, Copy)]
-pub struct ChunkLOD(u32);
+pub struct ChunkLOD(usize);
 
 impl Default for ChunkLOD {
     fn default() -> Self {
-        Self(OCTREE_DEPTH as u32 + 1)
+        Self(OCTREE_DEPTH + 1)
     }
 }
 
 impl ChunkLOD {
-    pub fn new(lod: u32) -> Self {
+    pub fn new(lod: usize) -> Self {
         assert!(
-            lod <= OCTREE_DEPTH as u32 + 1,
+            lod <= OCTREE_DEPTH + 1,
             "LOD must be less than or equal to {}, got {}",
             OCTREE_DEPTH + 1,
             lod
@@ -60,9 +60,9 @@ impl ChunkLOD {
         Self(lod)
     }
 
-    pub fn set(&mut self, lod: u32) {
+    pub fn set(&mut self, lod: usize) {
         assert!(
-            lod <= OCTREE_DEPTH as u32 + 1,
+            lod <= OCTREE_DEPTH + 1,
             "LOD must be less than or equal to {}, got {}",
             OCTREE_DEPTH + 1,
             lod
@@ -70,7 +70,7 @@ impl ChunkLOD {
         self.0 = lod;
     }
 
-    pub fn get(&self) -> u32 {
+    pub fn get(&self) -> usize {
         self.0
     }
 }
