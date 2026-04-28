@@ -2,7 +2,7 @@ use crate::realm::chunk::{
     Chunk, DIAMETER, OCTREE_DEPTH, Octree, OctreeNode, OctreeNodeFlag, STRIDE_X, STRIDE_Y,
     STRIDE_Z, Voxel, VoxelBuffer,
 };
-use bevy::math::U8Vec3;
+use bevy::math::{I8Vec3, U8Vec3};
 use std::fmt::{Debug, Formatter};
 use std::ops::Deref;
 
@@ -284,123 +284,27 @@ impl VoxelGroupRef for OctreeRef<'_> {
     }
 
     fn right(&self) -> Option<Self> {
-        if self.is_root_node() {
-            return None;
-        }
-
-        let index = Octree::depth_relative_index(self.index);
-        let depth_size = Octree::DEPTH_SIZE[self.depth()];
-        let cousin_stride_x = 8 - SIBLING_STRIDE_X;
-
-        if index % 2 == 0 {
-            // Sibling
-            Some(Self::new(self.octree, self.index + SIBLING_STRIDE_X))
-        } else if index % (depth_size / 4) < depth_size / 8 {
-            // Cousin
-            Some(Self::new(self.octree, self.index + cousin_stride_x))
-        } else {
-            None
-        }
+        self.offset(I8Vec3::X)
     }
 
     fn left(&self) -> Option<Self> {
-        if self.is_root_node() {
-            return None;
-        }
-
-        let index = Octree::depth_relative_index(self.index);
-        let depth_size = Octree::DEPTH_SIZE[self.depth()];
-        let cousin_stride_x = 8 - SIBLING_STRIDE_X;
-
-        if index % 2 != 0 {
-            // Sibling
-            Some(Self::new(self.octree, self.index - SIBLING_STRIDE_X))
-        } else if index % (depth_size / 4) >= (depth_size / 8) {
-            // Cousin
-            Some(Self::new(self.octree, self.index - cousin_stride_x))
-        } else {
-            None
-        }
+        self.offset(I8Vec3::NEG_X)
     }
 
     fn up(&self) -> Option<Self> {
-        if self.is_root_node() {
-            return None;
-        }
-
-        let index = Octree::depth_relative_index(self.index);
-        let depth_size = Octree::DEPTH_SIZE[self.depth()];
-        let cousin_stride_y = 8 * (Octree::DEPTH_DIAMETER[self.depth()] / 2) - SIBLING_STRIDE_Y;
-
-        if (index / 2) % 2 == 0 {
-            // Sibling
-            Some(Self::new(self.octree, self.index + SIBLING_STRIDE_Y))
-        } else if index % (depth_size / 2) < depth_size / 4 {
-            // Cousin
-            Some(Self::new(self.octree, self.index + cousin_stride_y))
-        } else {
-            None
-        }
+        self.offset(I8Vec3::Y)
     }
 
     fn down(&self) -> Option<Self> {
-        if self.is_root_node() {
-            return None;
-        }
-
-        let index = Octree::depth_relative_index(self.index);
-        let depth_size = Octree::DEPTH_SIZE[self.depth()];
-        let cousin_stride_y = 8 * (Octree::DEPTH_DIAMETER[self.depth()] / 2) - SIBLING_STRIDE_Y;
-
-        if (index / 2) % 2 != 0 {
-            // Sibling
-            Some(Self::new(self.octree, self.index - SIBLING_STRIDE_Y))
-        } else if index % (depth_size / 2) >= depth_size / 4 {
-            // Cousin
-            Some(Self::new(self.octree, self.index - cousin_stride_y))
-        } else {
-            None
-        }
+        self.offset(I8Vec3::NEG_Y)
     }
 
     fn backward(&self) -> Option<Self> {
-        if self.is_root_node() {
-            return None;
-        }
-
-        let index = Octree::depth_relative_index(self.index);
-        let depth_size = Octree::DEPTH_SIZE[self.depth()];
-        let cousin_stride_z = 8 * Octree::DEPTH_DIAMETER[self.depth()] - SIBLING_STRIDE_Z;
-
-        if (index / 4) % 2 == 0 {
-            // Sibling
-            Some(Self::new(self.octree, self.index + SIBLING_STRIDE_Z))
-        } else if index % depth_size < depth_size / 2 {
-            // Cousin
-            Some(Self::new(self.octree, self.index + cousin_stride_z))
-        } else {
-            None
-        }
+        self.offset(I8Vec3::Z)
     }
 
     fn forward(&self) -> Option<Self> {
-        if self.is_root_node() {
-            return None;
-        }
-
-        let index = Octree::depth_relative_index(self.index);
-        let depth_size = Octree::DEPTH_SIZE[self.depth()];
-        let cousin_stride_z = 8 * Octree::DEPTH_DIAMETER[self.depth()] - SIBLING_STRIDE_Z;
-
-        if (index / 4) % 2 != 0 {
-            // Sibling
-            Some(Self::new(self.octree, self.index - SIBLING_STRIDE_Z))
-        } else if index % depth_size >= depth_size / 2 {
-            // Cousin
-            Some(Self::new(self.octree, self.index - cousin_stride_z))
-        } else {
-            None
-        }
+        self.offset(I8Vec3::NEG_Z)
     }
 }
 
@@ -415,6 +319,23 @@ impl<'a> OctreeRef<'a> {
 
     pub fn octree(&self) -> &Octree {
         self.octree
+    }
+
+    pub fn offset(self, offset: I8Vec3) -> Option<OctreeRef<'a>> {
+        if self.depth() == 0 {
+            return None;
+        }
+
+        let pos = self
+            .pos()
+            .checked_add_signed(offset.checked_mul(I8Vec3::splat(
+                Octree::DEPTH_VOXEL_DIAMETER[self.depth()] as i8,
+            ))?)?;
+
+        let index = Octree::pos_to_node_index(pos, self.depth());
+
+        (Octree::get_depth(index) == self.depth() && index != self.index)
+            .then(|| Self::new(self.octree, index))
     }
 
     pub fn parent(self) -> Option<OctreeRef<'a>> {
@@ -467,7 +388,6 @@ impl<'a> OctreeRef<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::realm::chunk::OCTREE_NODE_COUNT;
     use crate::realm::chunk::octree::LEAF_START;
 
     #[test]
@@ -515,204 +435,145 @@ mod tests {
     #[test]
     fn octree_ref_right() {
         let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 1);
-        assert_eq!(r.right().unwrap().index, 2);
+        let r = octree.get_ref_pos(U8Vec3::default(), 1);
+        assert_eq!(r.right().unwrap().pos(), U8Vec3::X * 16);
     }
 
     #[test]
     fn octree_ref_left() {
         let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 2);
-        assert_eq!(r.left().unwrap().index, 1);
+        let r = octree.get_ref_pos(U8Vec3::X * 16, 1);
+        assert_eq!(r.left().unwrap().pos(), U8Vec3::default());
     }
 
     #[test]
     fn octree_ref_up() {
         let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 1);
-        assert_eq!(r.up().unwrap().index, 3);
+        let r = octree.get_ref_pos(U8Vec3::default(), 1);
+        assert_eq!(r.up().unwrap().pos(), U8Vec3::Y * 16);
     }
 
     #[test]
     fn octree_ref_down() {
         let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 3);
-        assert_eq!(r.down().unwrap().index, 1);
+        let r = octree.get_ref_pos(U8Vec3::Y * 16, 1);
+        assert_eq!(r.down().unwrap().pos(), U8Vec3::default());
     }
 
     #[test]
     fn octree_ref_backward() {
         let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 1);
-        assert_eq!(r.backward().unwrap().index, 5);
+        let r = octree.get_ref_pos(U8Vec3::default(), 1);
+        assert_eq!(r.backward().unwrap().pos(), U8Vec3::Z * 16);
     }
 
     #[test]
     fn octree_ref_forward() {
         let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 5);
-        assert_eq!(r.forward().unwrap().index, 1);
+        let r = octree.get_ref_pos(U8Vec3::Z * 16, 1);
+        assert_eq!(r.forward().unwrap().pos(), U8Vec3::default());
     }
 
     #[test]
     fn octree_ref_right_across_parents() {
         let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 9 + 1);
-        assert_eq!(r.right().unwrap().index, 9 + 8);
+        let r = octree.get_ref_pos(U8Vec3::X, 2);
+        assert_eq!(r.right().unwrap().pos(), U8Vec3::X * 8);
     }
 
     #[test]
     fn octree_ref_left_across_parents() {
         let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 9 + 8);
-        assert_eq!(r.left().unwrap().index, 9 + 1);
+        let r = octree.get_ref_pos(U8Vec3::X * 8, 2);
+        assert_eq!(r.left().unwrap().pos(), U8Vec3::default());
     }
 
     #[test]
     fn octree_ref_up_across_parents() {
         let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 9 + 2);
-        assert_eq!(r.up().unwrap().index, 9 + 16);
+        let r = octree.get_ref_pos(U8Vec3::Y, 2);
+        assert_eq!(r.up().unwrap().pos(), U8Vec3::Y * 8);
     }
 
     #[test]
     fn octree_ref_down_across_parents() {
         let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 9 + 16);
-        assert_eq!(r.down().unwrap().index, 9 + 2);
+        let r = octree.get_ref_pos(U8Vec3::Y * 8, 2);
+        assert_eq!(r.down().unwrap().pos(), U8Vec3::default());
     }
 
     #[test]
     fn octree_ref_backward_across_parents() {
         let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 9 + 4);
-        assert_eq!(r.backward().unwrap().index, 9 + 32);
+        let r = octree.get_ref_pos(U8Vec3::Z, 2);
+        assert_eq!(r.backward().unwrap().pos(), U8Vec3::Z * 8);
     }
 
     #[test]
     fn octree_ref_forward_across_parents() {
         let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 9 + 32);
-        assert_eq!(r.forward().unwrap().index, 9 + 4);
-    }
-
-    #[test]
-    fn octree_ref_right_across_parents_2() {
-        let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 9 + 3);
-        assert_eq!(r.right().unwrap().index, 9 + 8 + 2);
-    }
-
-    #[test]
-    fn octree_ref_left_across_parents_2() {
-        let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 9 + 8 + 2);
-        assert_eq!(r.left().unwrap().index, 9 + 3);
-    }
-
-    #[test]
-    fn octree_ref_up_across_parents_2() {
-        let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 9 + 3);
-        assert_eq!(r.up().unwrap().index, 9 + 16 + 1);
-    }
-
-    #[test]
-    fn octree_ref_down_across_parents_2() {
-        let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 9 + 16 + 1);
-        assert_eq!(r.down().unwrap().index, 9 + 3);
-    }
-
-    #[test]
-    fn octree_ref_backward_across_parents_2() {
-        let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 9 + 5);
-        assert_eq!(r.backward().unwrap().index, 9 + 32 + 1);
-    }
-
-    #[test]
-    fn octree_ref_forward_across_parents_2() {
-        let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 9 + 32 + 1);
-        assert_eq!(r.forward().unwrap().index, 9 + 5);
-    }
-
-    #[test]
-    fn octree_ref_backward_across_parents_3() {
-        let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 9 + 6);
-        assert_eq!(r.backward().unwrap().index, 9 + 32 + 2);
-    }
-
-    #[test]
-    fn octree_ref_forward_across_parents_3() {
-        let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 9 + 32 + 2);
-        assert_eq!(r.forward().unwrap().index, 9 + 6);
-    }
-
-    #[test]
-    fn octree_ref_backward_across_parents_4() {
-        let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 9 + 7);
-        assert_eq!(r.backward().unwrap().index, 9 + 32 + 3);
-    }
-
-    #[test]
-    fn octree_ref_forward_across_parents_4() {
-        let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 9 + 32 + 3);
-        assert_eq!(r.forward().unwrap().index, 9 + 7);
+        let r = octree.get_ref_pos(U8Vec3::Z * 8, 2);
+        assert_eq!(r.forward().unwrap().pos(), U8Vec3::default());
     }
 
     #[test]
     fn octree_ref_right_none() {
         let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 9 + 8 + 1);
-        assert_eq!(r.right(), None);
+
+        for depth in 0..=OCTREE_DEPTH {
+            let r = octree.get_ref_pos(U8Vec3::X * 31, depth);
+            assert_eq!(r.right(), None);
+        }
     }
 
     #[test]
     fn octree_ref_left_none() {
         let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 9);
-        assert_eq!(r.left(), None);
+
+        for depth in 0..=OCTREE_DEPTH {
+            let r = octree.get_ref_pos(U8Vec3::default(), depth);
+            assert_eq!(r.left(), None);
+        }
     }
 
     #[test]
     fn octree_ref_up_none() {
         let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 9 + 16 + 2);
-        assert_eq!(r.up(), None);
+
+        for depth in 0..=OCTREE_DEPTH {
+            let r = octree.get_ref_pos(U8Vec3::Y * 31, depth);
+            assert_eq!(r.up(), None);
+        }
     }
 
     #[test]
     fn octree_ref_down_none() {
         let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 9);
-        assert_eq!(r.down(), None);
+
+        for depth in 0..=OCTREE_DEPTH {
+            let r = octree.get_ref_pos(U8Vec3::default(), depth);
+            assert_eq!(r.down(), None);
+        }
     }
 
     #[test]
     fn octree_ref_backward_none() {
         let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 9 + 32 + 4);
-        assert_eq!(r.backward(), None);
+
+        for depth in 0..=OCTREE_DEPTH {
+            let r = octree.get_ref_pos(U8Vec3::Z * 31, depth);
+            assert_eq!(r.backward(), None);
+        }
     }
 
     #[test]
     fn octree_ref_forward_none() {
         let octree = Octree::default();
-        let r = OctreeRef::new(&octree, 9);
-        assert_eq!(r.forward(), None);
-    }
 
-    #[test]
-    fn octree_ref_backward_bounds() {
-        let octree = Octree::default();
-        let r = OctreeRef::new(&octree, OCTREE_NODE_COUNT - 124);
-        assert_eq!(r.backward(), None);
+        for depth in 0..=OCTREE_DEPTH {
+            let r = octree.get_ref_pos(U8Vec3::default(), depth);
+            assert_eq!(r.forward(), None);
+        }
     }
 
     #[test]

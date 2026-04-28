@@ -207,10 +207,10 @@ impl Octree {
         OctreeRef::new(self, 0)
     }
 
-    /// Returns a reference to the parent of the voxel at the given position.
+    /// Returns a reference to the ancestor of the voxel at the given position and depth.
     #[inline]
-    pub fn get_leaf_pos(&self, pos: U8Vec3) -> OctreeRef<'_> {
-        OctreeRef::new(self, Self::pos_to_node_index(pos, 4))
+    pub fn get_ref_pos(&self, pos: U8Vec3, depth: usize) -> OctreeRef<'_> {
+        OctreeRef::new(self, Self::pos_to_node_index(pos, depth))
     }
 
     /// Returns an iterator over all nodes at a given depth in the tree.
