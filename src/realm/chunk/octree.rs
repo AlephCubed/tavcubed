@@ -16,9 +16,6 @@ pub const OCTREE_DEPTH: usize = DIAMETER / 8;
 // 8(8^n - 1)/7 where n is the depth of the tree.
 pub const OCTREE_NODE_COUNT: usize = (8 * 8usize.pow(OCTREE_DEPTH as u32) - 1) / 7;
 
-const LEAF_START: usize = Octree::DEPTH_START[OCTREE_DEPTH];
-const LEAF_DIAMETER: usize = 2usize.pow(OCTREE_DEPTH as u32);
-
 pub type OctreeBuffer = [OctreeNode; OCTREE_NODE_COUNT];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -73,14 +70,12 @@ impl Octree {
     /// Returns the index of a node relative to its depth.
     #[inline(always)]
     const fn depth_relative_index(index: usize) -> usize {
-        // Todo optimize.
         index - Self::DEPTH_START[Self::get_depth(index)]
     }
 
     /// Returns the index of the first child of the given node.
     #[inline]
     const fn child_index(index: usize) -> usize {
-        // Todo optimize.
         let depth = Self::get_depth(index);
         let offset = Self::depth_relative_index(index);
         Self::DEPTH_START[depth + 1] + offset * 8
@@ -99,7 +94,6 @@ impl Octree {
     #[inline]
     fn parent_index(index: usize) -> usize {
         debug_assert_ne!(index, 0, "Root node (0) has no parent");
-        // Todo optimize.
         let depth = Self::get_depth(index);
         let offset = Self::depth_relative_index(index);
         Self::DEPTH_START[depth - 1] + offset / 8
@@ -278,6 +272,7 @@ bitflags! {
 mod tests {
     use super::*;
     use crate::realm::chunk::CHUNK_VOXEL_COUNT;
+    const LEAF_START: usize = Octree::DEPTH_START[OCTREE_DEPTH];
     use bevy::math::u8vec3;
 
     #[test]

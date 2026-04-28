@@ -257,11 +257,6 @@ impl<'a> Deref for OctreeRef<'a> {
     }
 }
 
-const SIBLING_STRIDE_X: usize = 1;
-const SIBLING_STRIDE_Y: usize = 2;
-const SIBLING_STRIDE_Z: usize = 4;
-
-#[expect(clippy::manual_is_multiple_of)]
 impl VoxelGroupRef for OctreeRef<'_> {
     fn voxel(&self) -> Option<Voxel> {
         self.node().voxel()
@@ -388,7 +383,6 @@ impl<'a> OctreeRef<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::realm::chunk::octree::LEAF_START;
 
     #[test]
     fn chunk_ref_right() {
@@ -596,7 +590,7 @@ mod tests {
         assert_eq!(OctreeRef::new(&octree, 1).size(), 16);
         assert_eq!(OctreeRef::new(&octree, 9).size(), 8);
         assert_eq!(OctreeRef::new(&octree, 73).size(), 4);
-        assert_eq!(OctreeRef::new(&octree, LEAF_START).size(), 2);
+        assert_eq!(OctreeRef::new(&octree, 585).size(), 2);
     }
 
     #[test]
