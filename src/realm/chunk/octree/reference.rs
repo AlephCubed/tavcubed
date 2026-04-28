@@ -1,6 +1,6 @@
 use crate::realm::chunk::{
-    Chunk, DIAMETER, OCTREE_DEPTH, Octree, OctreeNode, OctreeNodeFlag, STRIDE_X, STRIDE_Y,
-    STRIDE_Z, Voxel, VoxelBuffer,
+    DIAMETER, OCTREE_DEPTH, Octree, OctreeNode, OctreeNodeFlag, STRIDE_X, STRIDE_Y, STRIDE_Z,
+    Voxel, VoxelGrid,
 };
 use bevy::math::{I8Vec3, U8Vec3};
 use std::fmt::{Debug, Formatter};
@@ -150,7 +150,7 @@ impl<'a> From<OctreeRef<'a>> for DynVoxelGroupRef<'a> {
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct VoxelRef<'a> {
-    voxels: &'a VoxelBuffer,
+    voxels: &'a VoxelGrid,
     index: usize,
 }
 
@@ -183,7 +183,7 @@ impl VoxelGroupRef for VoxelRef<'_> {
     }
 
     fn pos(&self) -> U8Vec3 {
-        Chunk::index_to_pos(self.index)
+        VoxelGrid::index_to_pos(self.index)
     }
 
     fn size(&self) -> u8 {
@@ -220,11 +220,11 @@ impl VoxelGroupRef for VoxelRef<'_> {
 }
 
 impl<'a> VoxelRef<'a> {
-    pub fn new(voxels: &'a VoxelBuffer, index: usize) -> Self {
+    pub fn new(voxels: &'a VoxelGrid, index: usize) -> Self {
         Self { voxels, index }
     }
 
-    pub fn voxels(self) -> &'a VoxelBuffer {
+    pub fn voxels(self) -> &'a VoxelGrid {
         self.voxels
     }
 
@@ -350,7 +350,7 @@ impl<'a> OctreeRef<'a> {
     /// or [`iter_voxels`](Self::iter_voxels) to loop over only the voxels.
     pub fn children(
         &'a self,
-        voxels: &'a VoxelBuffer,
+        voxels: &'a VoxelGrid,
     ) -> VoxelGroupIter<'a, impl Iterator<Item = VoxelRef<'a>>, impl Iterator<Item = OctreeRef<'a>>>
     {
         match self.is_leaf_node() {
@@ -375,7 +375,7 @@ impl<'a> OctreeRef<'a> {
     }
 
     /// Returns a [`VoxelRef`] iterator including all voxels that are descendants of the current node.
-    pub fn iter_voxels(&'a self, voxels: &'a VoxelBuffer) -> impl Iterator<Item = VoxelRef<'a>> {
+    pub fn iter_voxels(&'a self, voxels: &'a VoxelGrid) -> impl Iterator<Item = VoxelRef<'a>> {
         Octree::iter_voxel_indices(self.index).map(|i| VoxelRef::new(voxels, i))
     }
 }
@@ -383,46 +383,47 @@ impl<'a> OctreeRef<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::realm::chunk::Chunk;
 
     #[test]
-    fn chunk_ref_right() {
-        let chunk = Chunk::default();
-        let r = chunk.get_ref_pos(U8Vec3::default());
+    fn voxel_grid_ref_right() {
+        let voxel_grid = VoxelGrid::default();
+        let r = voxel_grid.get_ref_pos(U8Vec3::default());
         assert_eq!(r.right().unwrap().pos(), U8Vec3::X);
     }
 
     #[test]
-    fn chunk_ref_left() {
-        let chunk = Chunk::default();
-        let r = chunk.get_ref_pos(U8Vec3::X);
+    fn voxel_grid_ref_left() {
+        let voxel_grid = VoxelGrid::default();
+        let r = voxel_grid.get_ref_pos(U8Vec3::X);
         assert_eq!(r.left().unwrap().pos(), U8Vec3::default());
     }
 
     #[test]
-    fn chunk_ref_up() {
-        let chunk = Chunk::default();
-        let r = chunk.get_ref_pos(U8Vec3::default());
+    fn voxel_grid_ref_up() {
+        let voxel_grid = VoxelGrid::default();
+        let r = voxel_grid.get_ref_pos(U8Vec3::default());
         assert_eq!(r.up().unwrap().pos(), U8Vec3::Y);
     }
 
     #[test]
-    fn chunk_ref_down() {
-        let chunk = Chunk::default();
-        let r = chunk.get_ref_pos(U8Vec3::Y);
+    fn voxel_grid_ref_down() {
+        let voxel_grid = VoxelGrid::default();
+        let r = voxel_grid.get_ref_pos(U8Vec3::Y);
         assert_eq!(r.down().unwrap().pos(), U8Vec3::default());
     }
 
     #[test]
-    fn chunk_ref_backward() {
-        let chunk = Chunk::default();
-        let r = chunk.get_ref_pos(U8Vec3::default());
+    fn voxel_grid_ref_backward() {
+        let voxel_grid = VoxelGrid::default();
+        let r = voxel_grid.get_ref_pos(U8Vec3::default());
         assert_eq!(r.backward().unwrap().pos(), U8Vec3::Z);
     }
 
     #[test]
-    fn chunk_ref_forward() {
-        let chunk = Chunk::default();
-        let r = chunk.get_ref_pos(U8Vec3::Z);
+    fn voxel_grid_ref_forward() {
+        let voxel_grid = VoxelGrid::default();
+        let r = voxel_grid.get_ref_pos(U8Vec3::Z);
         assert_eq!(r.forward().unwrap().pos(), U8Vec3::default());
     }
 

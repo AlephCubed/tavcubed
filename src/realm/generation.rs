@@ -1,5 +1,5 @@
 use crate::realm::block::data::registry::BlockRegistry;
-use crate::realm::chunk::{Chunk, ChunkPos, Voxel};
+use crate::realm::chunk::{Chunk, ChunkPos, Voxel, VoxelGrid};
 use bevy::math::u8vec3;
 use bevy::prelude::*;
 use bevy::tasks::AsyncComputeTaskPool;
@@ -71,7 +71,7 @@ fn generate_perlin_chunk(
         pool.spawn(async move {
             let noise = Noise::<Simplex>::default();
 
-            let mut chunk = Chunk::default();
+            let mut voxel_grid = VoxelGrid::default();
 
             for x in 0..32 {
                 for z in 0..32 {
@@ -84,13 +84,13 @@ fn generate_perlin_chunk(
                     let height = BASE + (sample * AMPLITUDE) as u8;
 
                     for y in 0..(height - 1) {
-                        chunk.set_pos(
+                        voxel_grid.set_pos(
                             u8vec3(x, y, z),
                             Voxel::new(registry.voxel_id(&"core:stone".try_into().unwrap())).into(),
                         );
                     }
 
-                    chunk.set_pos(
+                    voxel_grid.set_pos(
                         u8vec3(x, height - 1, z),
                         Voxel::new(registry.voxel_id(&"core:grass".try_into().unwrap())).into(),
                     );
@@ -99,7 +99,7 @@ fn generate_perlin_chunk(
 
             _ = sender.send(ChunkGenerationFinished {
                 pos: message.position,
-                chunk: Some(chunk),
+                chunk: Some(Chunk::new(voxel_grid)),
             });
         })
         .detach();

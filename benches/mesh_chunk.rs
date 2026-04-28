@@ -6,7 +6,7 @@ use tavcubed::realm::block::BlockId;
 use tavcubed::realm::block::data::registry::BlockRegistryInner;
 use tavcubed::realm::block::data::{Block, BlockTexture};
 use tavcubed::realm::chunk::mesh::{ChunkLOD, mesh_chunk};
-use tavcubed::realm::chunk::{CHUNK_VOXEL_COUNT, Chunk, Voxel};
+use tavcubed::realm::chunk::{Chunk, Voxel};
 
 fn get_registry() -> BlockRegistryInner {
     let mut registry = BlockRegistryInner::default();
@@ -32,7 +32,7 @@ fn mesh_chunk_empty(c: &mut Criterion) {
 }
 
 fn mesh_chunk_full(c: &mut Criterion) {
-    let chunk = Chunk::new([Some(Voxel::default()); CHUNK_VOXEL_COUNT]);
+    let chunk = Chunk::full(Voxel::default());
     let registry = get_registry();
 
     c.bench_function("Mesh chunk full", |b| {

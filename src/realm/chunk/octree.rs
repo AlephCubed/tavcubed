@@ -5,8 +5,8 @@ mod z_order_curve;
 pub use reference::*;
 
 use crate::realm::chunk::octree::z_order_curve::{pos_to_z_order, z_order_to_pos};
-use crate::realm::chunk::voxel::Voxel;
-use crate::realm::chunk::{Chunk, DIAMETER, STRIDE_X, STRIDE_Y, STRIDE_Z, VoxelBuffer};
+use crate::realm::chunk::voxel_grid::Voxel;
+use crate::realm::chunk::{DIAMETER, STRIDE_X, STRIDE_Y, STRIDE_Z, VoxelGrid};
 use bevy::math::U8Vec3;
 use bitflags::bitflags;
 use std::collections::HashMap;
@@ -18,13 +18,13 @@ pub const OCTREE_NODE_COUNT: usize = (8 * 8usize.pow(OCTREE_DEPTH as u32) - 1) /
 
 pub type OctreeBuffer = [OctreeNode; OCTREE_NODE_COUNT];
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Octree {
     buffer: OctreeBuffer,
 }
 
 impl Octree {
-    pub fn new(voxels: &VoxelBuffer) -> Self {
+    pub fn new(voxels: &VoxelGrid) -> Self {
         let mut octree = Octree::default();
 
         for depth in (0..=OCTREE_DEPTH).rev() {
@@ -125,7 +125,7 @@ impl Octree {
     fn iter_voxel_indices(index: usize) -> impl Iterator<Item = usize> {
         let depth = Self::get_depth(index);
         let size = Octree::DEPTH_VOXEL_SIZE[depth];
-        let start = Chunk::pos_to_index(Octree::node_index_to_pos(index));
+        let start = VoxelGrid::pos_to_index(Octree::node_index_to_pos(index));
         let d = Octree::DEPTH_VOXEL_DIAMETER[depth];
 
         (0..size).map(move |i| {
@@ -136,15 +136,15 @@ impl Octree {
         })
     }
 
-    pub(super) fn update(&mut self, voxel: usize, voxels: &VoxelBuffer) {
-        let mut current = Self::pos_to_node_index(Chunk::index_to_pos(voxel), 4);
+    pub(super) fn update(&mut self, voxel: usize, voxels: &VoxelGrid) {
+        let mut current = Self::pos_to_node_index(VoxelGrid::index_to_pos(voxel), 4);
 
         while self.update_node(current, voxels) && current != 0 {
             current = Self::parent_index(current);
         }
     }
 
-    fn update_node(&mut self, node: usize, voxels: &VoxelBuffer) -> bool {
+    fn update_node(&mut self, node: usize, voxels: &VoxelGrid) -> bool {
         let node = OctreeRef::new(self, node);
 
         let mut counts = HashMap::<Option<Voxel>, u8>::with_capacity(8);
@@ -205,6 +205,12 @@ impl Octree {
     #[inline]
     pub fn get_ref_pos(&self, pos: U8Vec3, depth: usize) -> OctreeRef<'_> {
         OctreeRef::new(self, Self::pos_to_node_index(pos, depth))
+    }
+
+    /// Resets all nodes in the tree.
+    #[inline]
+    pub fn clear(&mut self) {
+        *self = Self::default();
     }
 
     /// Returns an iterator over all nodes at a given depth in the tree.
@@ -271,7 +277,7 @@ bitflags! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::realm::chunk::CHUNK_VOXEL_COUNT;
+    use crate::realm::chunk::{Chunk, VOXEL_COUNT};
     const LEAF_START: usize = Octree::DEPTH_START[OCTREE_DEPTH];
     use bevy::math::u8vec3;
 
@@ -462,7 +468,7 @@ mod tests {
     fn update_empty_uniform() {
         let mut chunk = Chunk::default();
 
-        chunk.octree.update(0, &chunk.buffer);
+        chunk.octree.update(0, &chunk.voxel_grid);
 
         for depth in 0..OCTREE_DEPTH {
             assert_eq!(
@@ -478,10 +484,10 @@ mod tests {
 
     #[test]
     fn update_empty_uniform_using_parent() {
-        for i in 0..CHUNK_VOXEL_COUNT {
+        for i in 0..VOXEL_COUNT {
             let mut chunk = Chunk::default();
 
-            chunk.octree.update(i, &chunk.buffer);
+            chunk.octree.update(i, &chunk.voxel_grid);
 
             let r = chunk.get_ref(i);
             let mut parent = r.parent(&chunk.octree);
@@ -508,7 +514,7 @@ mod tests {
     fn update_full_uniform() {
         let mut chunk = Chunk::full(Voxel::default());
 
-        chunk.octree.update(0, &chunk.buffer);
+        chunk.octree.update(0, &chunk.voxel_grid);
 
         for depth in 0..OCTREE_DEPTH {
             assert_eq!(
@@ -524,10 +530,10 @@ mod tests {
 
     #[test]
     fn update_full_uniform_using_parent() {
-        for i in 0..CHUNK_VOXEL_COUNT {
+        for i in 0..VOXEL_COUNT {
             let mut chunk = Chunk::full(Voxel::default());
 
-            chunk.octree.update(i, &chunk.buffer);
+            chunk.octree.update(i, &chunk.voxel_grid);
 
             let r = chunk.get_ref(i);
             let mut parent = r.parent(&chunk.octree);
@@ -555,7 +561,7 @@ mod tests {
         let mut chunk = Chunk::default();
         chunk.place(0, Voxel::default()).unwrap();
 
-        chunk.octree.update(0, &chunk.buffer);
+        chunk.octree.update(0, &chunk.voxel_grid);
 
         for depth in 0..OCTREE_DEPTH {
             assert_eq!(
@@ -571,11 +577,11 @@ mod tests {
 
     #[test]
     fn update_single_voxel_using_parent() {
-        for i in 0..CHUNK_VOXEL_COUNT {
+        for i in 0..VOXEL_COUNT {
             let mut chunk = Chunk::default();
             chunk.place(i, Voxel::default()).unwrap();
 
-            chunk.octree.update(i, &chunk.buffer);
+            chunk.octree.update(i, &chunk.voxel_grid);
 
             let r = chunk.get_ref(i);
             let mut parent = r.parent(&chunk.octree);
@@ -602,7 +608,7 @@ mod tests {
     fn update_leaf_node_mixed() {
         let mut chunk = Chunk::checkerboard(Some(Voxel::default()), Some(Voxel::new_unwrap(2)));
 
-        chunk.octree.update(0, &chunk.buffer);
+        chunk.octree.update(0, &chunk.voxel_grid);
         for depth in 0..OCTREE_DEPTH {
             assert_eq!(
                 chunk.octree.buffer[Octree::DEPTH_START[depth]],
@@ -620,7 +626,7 @@ mod tests {
         let mut chunk = Chunk::checkerboard(Some(Voxel::default()), Some(Voxel::new_unwrap(2)));
         chunk.set(0, Some(Voxel::new_unwrap(2)));
 
-        chunk.octree.update(0, &chunk.buffer);
+        chunk.octree.update(0, &chunk.voxel_grid);
         assert_eq!(
             chunk.octree.buffer[LEAF_START],
             OctreeNode {
@@ -634,7 +640,7 @@ mod tests {
     fn update_leaf_node_mixed_empty() {
         let mut chunk = Chunk::checkerboard(Some(Voxel::default()), None);
 
-        chunk.octree.update(0, &chunk.buffer);
+        chunk.octree.update(0, &chunk.voxel_grid);
         assert_eq!(
             chunk.octree.buffer[LEAF_START],
             OctreeNode {
@@ -649,7 +655,7 @@ mod tests {
         let mut chunk = Chunk::default();
         chunk.set(0, Some(Voxel::default()));
 
-        chunk.octree.update(0, &chunk.buffer);
+        chunk.octree.update(0, &chunk.voxel_grid);
         assert_eq!(
             chunk.octree.buffer[LEAF_START],
             OctreeNode {
@@ -674,7 +680,7 @@ mod tests {
             }
         }
 
-        chunk.octree.update(0, &chunk.buffer);
+        chunk.octree.update(0, &chunk.voxel_grid);
         assert_eq!(
             chunk.octree.buffer[LEAF_START],
             OctreeNode {

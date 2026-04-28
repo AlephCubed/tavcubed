@@ -101,7 +101,7 @@ fn mesh_changed_chunks(
 
         trace!("Meshing {entity}");
 
-        let chunk = *chunk;
+        let chunk = chunk.clone();
         let lod = *lod;
         let registry = registry.clone();
 

@@ -52,7 +52,7 @@ pub(super) fn z_order_to_pos(index: usize) -> U8Vec3 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::realm::chunk::CHUNK_VOXEL_COUNT;
+    use crate::realm::chunk::voxel_grid::VOXEL_COUNT;
 
     #[test]
     fn first_to_pos() {
@@ -61,9 +61,6 @@ mod tests {
 
     #[test]
     fn last_to_pos() {
-        assert_eq!(
-            z_order_to_pos(CHUNK_VOXEL_COUNT - 1),
-            U8Vec3::new(31, 31, 31)
-        );
+        assert_eq!(z_order_to_pos(VOXEL_COUNT - 1), U8Vec3::new(31, 31, 31));
     }
 }
