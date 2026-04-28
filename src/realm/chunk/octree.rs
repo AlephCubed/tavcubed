@@ -406,53 +406,15 @@ mod tests {
     }
 
     #[test]
-    fn node_index_to_pos_leaf_x() {
-        assert_eq!(Octree::node_index_to_pos(LEAF_START), U8Vec3::new(0, 0, 0));
-
-        assert_eq!(
-            Octree::node_index_to_pos(LEAF_START + 1),
-            U8Vec3::new(2, 0, 0)
-        );
-        assert_eq!(
-            Octree::node_index_to_pos(LEAF_START + 2),
-            U8Vec3::new(4, 0, 0)
-        );
-        assert_eq!(
-            Octree::node_index_to_pos(LEAF_START + 3),
-            U8Vec3::new(6, 0, 0)
-        );
-    }
-
-    #[test]
-    fn node_index_to_pos_leaf_y() {
-        assert_eq!(
-            Octree::node_index_to_pos(LEAF_START + LEAF_DIAMETER),
-            U8Vec3::new(0, 2, 0)
-        );
-        assert_eq!(
-            Octree::node_index_to_pos(LEAF_START + LEAF_DIAMETER * 2),
-            U8Vec3::new(0, 4, 0)
-        );
-        assert_eq!(
-            Octree::node_index_to_pos(LEAF_START + LEAF_DIAMETER * 3),
-            U8Vec3::new(0, 6, 0)
-        );
-    }
-
-    #[test]
-    fn node_index_to_pos_leaf_z() {
-        assert_eq!(
-            Octree::node_index_to_pos(LEAF_START + LEAF_DIAMETER * LEAF_DIAMETER),
-            U8Vec3::new(0, 0, 2)
-        );
-        assert_eq!(
-            Octree::node_index_to_pos(LEAF_START + LEAF_DIAMETER * LEAF_DIAMETER * 2),
-            U8Vec3::new(0, 0, 4)
-        );
-        assert_eq!(
-            Octree::node_index_to_pos(LEAF_START + LEAF_DIAMETER * LEAF_DIAMETER * 3),
-            U8Vec3::new(0, 0, 6)
-        );
+    fn node_index_to_pos_leaf() {
+        assert_eq!(Octree::node_index_to_pos(LEAF_START + 0), u8vec3(0, 0, 0));
+        assert_eq!(Octree::node_index_to_pos(LEAF_START + 1), u8vec3(2, 0, 0));
+        assert_eq!(Octree::node_index_to_pos(LEAF_START + 2), u8vec3(0, 2, 0));
+        assert_eq!(Octree::node_index_to_pos(LEAF_START + 3), u8vec3(2, 2, 0));
+        assert_eq!(Octree::node_index_to_pos(LEAF_START + 4), u8vec3(0, 0, 2));
+        assert_eq!(Octree::node_index_to_pos(LEAF_START + 5), u8vec3(2, 0, 2));
+        assert_eq!(Octree::node_index_to_pos(LEAF_START + 6), u8vec3(0, 2, 2));
+        assert_eq!(Octree::node_index_to_pos(LEAF_START + 7), u8vec3(2, 2, 2));
     }
 
     #[test]
