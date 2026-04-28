@@ -4,7 +4,6 @@ mod z_order_curve;
 
 pub use reference::*;
 
-use crate::debug_asset_valid_voxel_pos;
 use crate::realm::chunk::octree::z_order_curve::{pos_to_z_order, z_order_to_pos};
 use crate::realm::chunk::voxel::Voxel;
 use crate::realm::chunk::{Chunk, DIAMETER, STRIDE_X, STRIDE_Y, STRIDE_Z, VoxelBuffer};
@@ -94,12 +93,6 @@ impl Octree {
         index..(index + 8)
     }
 
-    /// Returns an iterator over the children of the given node.
-    #[inline]
-    fn children(&self, index: usize) -> impl Iterator<Item = &OctreeNode> {
-        Self::children_indices(index).map(|i| &self.buffer[i])
-    }
-
     /// Returns the index of the parent of the given node.
     /// # Panics
     /// If the node is root (0).
@@ -112,17 +105,9 @@ impl Octree {
         Self::DEPTH_START[depth - 1] + offset / 8
     }
 
-    /// Returns the parent of the given node.
-    #[inline]
-    fn parent(&self, index: usize) -> &OctreeNode {
-        &self.buffer[Self::parent_index(index)]
-    }
-
-    /// Converts a voxel position to its parents octree node index.
-    #[inline]
-    fn pos_to_leaf_index(pos: U8Vec3) -> usize {
-        debug_asset_valid_voxel_pos!(pos);
-        LEAF_START + pos_to_z_order(pos / 2)
+    /// Converts a voxel position to its ancestor index at the given depth.
+    fn pos_to_node_index(pos: U8Vec3, depth: usize) -> usize {
+        Self::DEPTH_START[depth] + pos_to_z_order(pos / Self::DEPTH_VOXEL_DIAMETER[depth] as u8)
     }
 
     /// Converts a node index at any layer into the voxel position of its first (minimum corner) voxel.
@@ -158,7 +143,7 @@ impl Octree {
     }
 
     pub(super) fn update(&mut self, voxel: usize, voxels: &VoxelBuffer) {
-        let mut current = Self::pos_to_leaf_index(Chunk::index_to_pos(voxel));
+        let mut current = Self::pos_to_node_index(Chunk::index_to_pos(voxel), 4);
 
         while self.update_node(current, voxels) && current != 0 {
             current = Self::parent_index(current);
@@ -225,7 +210,7 @@ impl Octree {
     /// Returns a reference to the parent of the voxel at the given position.
     #[inline]
     pub fn get_leaf_pos(&self, pos: U8Vec3) -> OctreeRef<'_> {
-        OctreeRef::new(self, Self::pos_to_leaf_index(pos))
+        OctreeRef::new(self, Self::pos_to_node_index(pos, 4))
     }
 
     /// Returns an iterator over all nodes at a given depth in the tree.
@@ -375,15 +360,49 @@ mod tests {
     }
 
     #[test]
-    fn pos_to_leaf_index() {
-        assert_eq!(Octree::pos_to_leaf_index(U8Vec3::new(0, 0, 0)), LEAF_START);
-        assert_eq!(Octree::pos_to_leaf_index(U8Vec3::new(1, 0, 0)), LEAF_START);
-        assert_eq!(Octree::pos_to_leaf_index(U8Vec3::new(0, 1, 0)), LEAF_START);
-        assert_eq!(Octree::pos_to_leaf_index(U8Vec3::new(1, 1, 0)), LEAF_START);
-        assert_eq!(Octree::pos_to_leaf_index(U8Vec3::new(0, 0, 1)), LEAF_START);
-        assert_eq!(Octree::pos_to_leaf_index(U8Vec3::new(1, 0, 1)), LEAF_START);
-        assert_eq!(Octree::pos_to_leaf_index(U8Vec3::new(0, 1, 1)), LEAF_START);
-        assert_eq!(Octree::pos_to_leaf_index(U8Vec3::new(1, 1, 1)), LEAF_START);
+    fn pos_to_node_index_leaf() {
+        assert_eq!(
+            Octree::pos_to_node_index(U8Vec3::new(0, 0, 0), 4),
+            LEAF_START
+        );
+        assert_eq!(
+            Octree::pos_to_node_index(U8Vec3::new(1, 0, 0), 4),
+            LEAF_START
+        );
+        assert_eq!(
+            Octree::pos_to_node_index(U8Vec3::new(0, 1, 0), 4),
+            LEAF_START
+        );
+        assert_eq!(
+            Octree::pos_to_node_index(U8Vec3::new(1, 1, 0), 4),
+            LEAF_START
+        );
+        assert_eq!(
+            Octree::pos_to_node_index(U8Vec3::new(0, 0, 1), 4),
+            LEAF_START
+        );
+        assert_eq!(
+            Octree::pos_to_node_index(U8Vec3::new(1, 0, 1), 4),
+            LEAF_START
+        );
+        assert_eq!(
+            Octree::pos_to_node_index(U8Vec3::new(0, 1, 1), 4),
+            LEAF_START
+        );
+        assert_eq!(
+            Octree::pos_to_node_index(U8Vec3::new(1, 1, 1), 4),
+            LEAF_START
+        );
+    }
+
+    #[test]
+    fn pos_to_node_index_depth_3() {
+        // Depth 4
+        let leaf = Octree::pos_to_node_index(U8Vec3::splat(2), 4);
+        assert_eq!(Octree::node_index_to_pos(leaf), U8Vec3::splat(2));
+
+        let depth3 = Octree::parent_index(leaf);
+        assert_eq!(Octree::node_index_to_pos(depth3), U8Vec3::splat(0));
     }
 
     #[test]
@@ -475,7 +494,7 @@ mod tests {
     }
 
     #[test]
-    fn octree_ref_voxel_indices() {
+    fn octree_voxel_indices() {
         assert_eq!(
             Octree::iter_voxel_indices(LEAF_START).collect::<Vec<_>>(),
             vec![0, 1, 32, 33, 1024, 1025, 1056, 1057]

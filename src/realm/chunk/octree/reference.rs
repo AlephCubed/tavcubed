@@ -233,7 +233,7 @@ impl<'a> VoxelRef<'a> {
     }
 
     pub fn parent(self, octree: &'a Octree) -> OctreeRef<'a> {
-        OctreeRef::new(octree, Octree::pos_to_leaf_index(self.pos()))
+        OctreeRef::new(octree, Octree::pos_to_node_index(self.pos(), 4))
     }
 }
 
@@ -468,7 +468,7 @@ impl<'a> OctreeRef<'a> {
 mod tests {
     use super::*;
     use crate::realm::chunk::OCTREE_NODE_COUNT;
-    use crate::realm::chunk::octree::{LEAF_DIAMETER, LEAF_START};
+    use crate::realm::chunk::octree::LEAF_START;
 
     #[test]
     fn chunk_ref_right() {
@@ -802,32 +802,14 @@ mod tests {
 
     #[test]
     fn octree_ref_pos_first_not_straight_specific() {
-        let first = Octree::DEPTH_START[3];
-        let diameter = Octree::DEPTH_DIAMETER[3];
-
         assert_eq!(
             OctreeRef::new(
                 &Octree::default(),
-                first + diameter + diameter * diameter + 1
+                Octree::pos_to_node_index(U8Vec3::splat(2), 3)
             )
             .pos(),
             U8Vec3::splat(0)
         );
-    }
-
-    #[test]
-    fn octree_pos_first_not_straight_specific_using_parent() {
-        // Depth 4
-        let leaf = Octree::pos_to_leaf_index(U8Vec3::splat(2));
-        assert_eq!(
-            leaf,
-            LEAF_START + LEAF_DIAMETER + LEAF_DIAMETER * LEAF_DIAMETER + 1
-        );
-        assert_eq!(Octree::node_index_to_pos(leaf), U8Vec3::splat(2));
-
-        let depth3 = Octree::parent_index(leaf);
-        assert_eq!(depth3, Octree::DEPTH_START[3]);
-        assert_eq!(Octree::node_index_to_pos(depth3), U8Vec3::splat(0));
     }
 
     #[test]
