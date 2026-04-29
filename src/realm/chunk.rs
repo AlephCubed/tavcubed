@@ -1,8 +1,10 @@
 pub mod mesh;
 mod octree;
+mod reference;
 mod voxel_grid;
 
 pub use octree::*;
+pub use reference::*;
 pub use voxel_grid::*;
 
 use crate::realm::RealmPlugin;

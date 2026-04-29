@@ -5,7 +5,7 @@ pub use reference::*;
 
 use crate::realm::chunk::octree::z_order_curve::{pos_to_z_order, z_order_to_pos};
 use crate::realm::chunk::voxel_grid::Voxel;
-use crate::realm::chunk::{Chunk, DIAMETER, STRIDE_X, STRIDE_Y, STRIDE_Z, VoxelGrid};
+use crate::realm::chunk::{DIAMETER, STRIDE_X, STRIDE_Y, STRIDE_Z, VoxelGrid, VoxelGroupRef};
 use bevy::math::U8Vec3;
 use bitflags::bitflags;
 use std::collections::HashMap;

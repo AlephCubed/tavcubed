@@ -1,5 +1,8 @@
+mod reference;
+
+pub use reference::*;
+
 use crate::realm::block::VoxelId;
-use crate::realm::chunk::VoxelRef;
 use bevy::math::U8Vec3;
 use std::fmt::Formatter;
 use std::ops::Index;
