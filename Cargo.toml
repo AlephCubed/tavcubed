@@ -58,3 +58,7 @@ lto = "thin"
 [[bench]]
 name = "mesh_chunk"
 harness = false
+
+[[bench]]
+name = "chunk_mutation"
+harness = false
