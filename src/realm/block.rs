@@ -1,21 +1,17 @@
 pub mod data;
 
-use crate::realm::block::data::load::load_core_blocks;
-use crate::realm::block::data::registry::BlockRegistry;
+use crate::realm::RealmPlugin;
 use bevy::prelude::*;
+use bevy_auto_plugin::prelude::{AutoPlugin, auto_add_plugin};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt::Formatter;
 use std::num::NonZeroU16;
 use std::str::FromStr;
 
+#[derive(AutoPlugin)]
+#[auto_plugin(impl_plugin_trait)]
+#[auto_add_plugin(plugin = RealmPlugin)]
 pub struct BlockPlugin;
-
-impl Plugin for BlockPlugin {
-    fn build(&self, app: &mut App) {
-        app.init_resource::<BlockRegistry>()
-            .add_systems(Startup, load_core_blocks);
-    }
-}
 
 /// The *unstable* ID of a [`Block`]. This is determined at runtime by [`BlockRegistry::register`].
 ///

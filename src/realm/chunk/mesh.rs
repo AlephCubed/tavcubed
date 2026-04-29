@@ -7,7 +7,7 @@ use crate::realm::block::data::BlockFace;
 use crate::realm::block::data::registry::{BlockRegistry, BlockRegistryInner};
 use crate::realm::chunk::mesh::material::ChunkMaterial;
 use crate::realm::chunk::mesh::packed_data::{VoxelData, pack};
-use crate::realm::chunk::{Chunk, ChunkPos, OCTREE_DEPTH, VoxelGroupRef};
+use crate::realm::chunk::{Chunk, ChunkPlugin, ChunkPos, OCTREE_DEPTH, VoxelGroupRef};
 use bevy::asset::RenderAssetUsages;
 use bevy::ecs::bundle::InsertMode;
 use bevy::ecs::system::entity_command::insert;
@@ -15,18 +15,8 @@ use bevy::math::U8Vec2;
 use bevy::mesh::{Indices, MeshVertexAttribute, PrimitiveTopology, VertexFormat};
 use bevy::prelude::*;
 use bevy::tasks::AsyncComputeTaskPool;
+use bevy_auto_plugin::prelude::{auto_resource, auto_system};
 use crossbeam_channel::{Receiver, Sender};
-
-pub struct ChunkMeshPlugin;
-
-impl Plugin for ChunkMeshPlugin {
-    fn build(&self, app: &mut App) {
-        let (sender, receiver) = crossbeam_channel::unbounded();
-        app.insert_resource(ChunkMeshChannel { sender, receiver })
-            .add_systems(Update, (mesh_changed_chunks, mesh_finished).chain())
-            .add_plugins(MaterialPlugin::<ChunkMaterial>::default());
-    }
-}
 
 pub const INDICES_PER_FACE: usize = 6;
 pub const VERTICES_PER_FACE: usize = 4;
@@ -77,9 +67,17 @@ impl ChunkLOD {
 
 /// A channel to send finished meshes through to be applied.
 #[derive(Resource)]
+#[auto_resource(plugin = ChunkPlugin, init)]
 struct ChunkMeshChannel {
     sender: Sender<ChunkMeshFinished>,
     receiver: Receiver<ChunkMeshFinished>,
+}
+
+impl Default for ChunkMeshChannel {
+    fn default() -> Self {
+        let (sender, receiver) = crossbeam_channel::unbounded();
+        ChunkMeshChannel { sender, receiver }
+    }
 }
 
 /// A message to send down the [`ChunkMeshChannel`].
@@ -89,6 +87,7 @@ struct ChunkMeshFinished {
 }
 
 /// Spins up meshing tasks for changed chunks.
+#[auto_system(plugin = ChunkPlugin, schedule = Update, config(before = mesh_finished))]
 fn mesh_changed_chunks(
     channel: Res<ChunkMeshChannel>,
     registry: Res<BlockRegistry>,
@@ -173,6 +172,7 @@ pub fn mesh_chunk(chunk: Chunk, lod: ChunkLOD, registry: &BlockRegistryInner) ->
 }
 
 /// Applies finished meshes to changed chunks.
+#[auto_system(plugin = ChunkPlugin, schedule = Update)]
 fn mesh_finished(
     mut commands: Commands,
     channel: Res<ChunkMeshChannel>,

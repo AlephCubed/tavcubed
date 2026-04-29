@@ -1,12 +1,14 @@
 use crate::realm::block::data::Block;
-use crate::realm::block::{BlockId, VoxelId};
+use crate::realm::block::{BlockId, BlockPlugin, VoxelId};
 use bevy::prelude::*;
+use bevy_auto_plugin::prelude::auto_resource;
 use std::collections::HashMap;
 use std::ops::Index;
 use std::sync::Arc;
 
 /// Maps [block](BlockId) and [voxel](VoxelId) IDs to [block data](Block).
 #[derive(Resource, Deref, DerefMut, Default)]
+#[auto_resource(plugin = BlockPlugin, init)]
 pub struct BlockRegistry(pub Arc<BlockRegistryInner>);
 
 impl BlockRegistry {

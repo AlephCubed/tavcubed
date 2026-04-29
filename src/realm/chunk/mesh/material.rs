@@ -1,3 +1,4 @@
+use crate::realm::chunk::ChunkPlugin;
 use crate::realm::chunk::mesh::ChunkMesh;
 use bevy::mesh::MeshVertexBufferLayoutRef;
 use bevy::pbr::{MaterialPipeline, MaterialPipelineKey};
@@ -6,6 +7,17 @@ use bevy::render::render_resource::{
     AsBindGroup, RenderPipelineDescriptor, SpecializedMeshPipelineError,
 };
 use bevy::shader::ShaderRef;
+use bevy_auto_plugin::prelude::{AutoPlugin, auto_add_plugin};
+
+#[derive(AutoPlugin)]
+#[auto_add_plugin(plugin = ChunkPlugin)]
+pub struct ChunkMaterialPlugin;
+
+impl Plugin for ChunkMaterialPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_plugins(MaterialPlugin::<ChunkMaterial>::default());
+    }
+}
 
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
 pub struct ChunkMaterial {

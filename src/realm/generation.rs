@@ -1,24 +1,15 @@
 use crate::realm::block::data::registry::BlockRegistry;
-use crate::realm::chunk::{Chunk, ChunkPos, Voxel, VoxelGrid};
+use crate::realm::chunk::{Chunk, ChunkPlugin, ChunkPos, Voxel, VoxelGrid};
 use bevy::math::u8vec3;
 use bevy::prelude::*;
 use bevy::tasks::AsyncComputeTaskPool;
+use bevy_auto_plugin::prelude::{auto_message, auto_resource, auto_system};
 use crossbeam_channel::{Receiver, Sender};
 use noiz::prelude::common_noise::Simplex;
 use noiz::prelude::*;
 
-pub struct ChunkGenerationPlugin;
-
-impl Plugin for ChunkGenerationPlugin {
-    fn build(&self, app: &mut App) {
-        let (sender, receiver) = crossbeam_channel::unbounded();
-        app.insert_resource(ChunkGenerationChannel { sender, receiver })
-            .add_message::<GenerateChunk>()
-            .add_systems(Update, (generate_perlin_chunk, generation_finished).chain());
-    }
-}
-
 #[derive(Message, Clone, Copy, Debug, PartialEq)]
+#[auto_message(plugin = ChunkPlugin)]
 pub struct GenerateChunk {
     pub position: IVec3,
 }
@@ -35,9 +26,17 @@ const AMPLITUDE: f32 = 8.0;
 
 /// A channel to send generated chunks through to be spawned.
 #[derive(Resource)]
+#[auto_resource(plugin = ChunkPlugin, init)]
 struct ChunkGenerationChannel {
     sender: Sender<ChunkGenerationFinished>,
     receiver: Receiver<ChunkGenerationFinished>,
+}
+
+impl Default for ChunkGenerationChannel {
+    fn default() -> Self {
+        let (sender, receiver) = crossbeam_channel::unbounded();
+        ChunkGenerationChannel { sender, receiver }
+    }
 }
 
 /// A message to send down the [`ChunkGenerationChannel`].
@@ -47,6 +46,7 @@ struct ChunkGenerationFinished {
 }
 
 /// Basic perlin noise heightmap.
+#[auto_system(plugin = ChunkPlugin, schedule = Update, config(before = generation_finished))]
 fn generate_perlin_chunk(
     mut messages: MessageReader<GenerateChunk>,
     channel: Res<ChunkGenerationChannel>,
@@ -106,6 +106,7 @@ fn generate_perlin_chunk(
     }
 }
 
+#[auto_system(plugin = ChunkPlugin, schedule = Update)]
 fn generation_finished(mut commands: Commands, channel: Res<ChunkGenerationChannel>) {
     for message in channel.receiver.try_iter() {
         match message.chunk {

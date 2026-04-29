@@ -1,20 +1,14 @@
+use super::DebugPlugin;
 use crate::player::PlayerChunk;
 use crate::realm::chunk::{Chunk, ChunkPos, DIAMETER, OCTREE_DEPTH, OctreeNodeFlag, VoxelGroupRef};
 use bevy::color::palettes::css::*;
 use bevy::math::bounding::Aabb3d;
 use bevy::prelude::*;
+use bevy_auto_plugin::prelude::{auto_resource, auto_system};
 use std::fmt::{Debug, Formatter};
 
-pub struct OctreeDebugPlugin;
-
-impl Plugin for OctreeDebugPlugin {
-    fn build(&self, app: &mut App) {
-        app.init_resource::<OctreeDebug>()
-            .add_systems(PostUpdate, render_octree_debug);
-    }
-}
-
 #[derive(Resource, Default)]
+#[auto_resource(plugin = DebugPlugin, init)]
 pub struct OctreeDebug {
     enabled: u8,
 }
@@ -45,6 +39,7 @@ impl Debug for OctreeDebug {
 
 const COLORS: [Srgba; 6] = [WHITE, YELLOW, ORANGE, GREEN, BLUE, PURPLE];
 
+#[auto_system(plugin = DebugPlugin, schedule = PostUpdate)]
 fn render_octree_debug(
     mut gizmos: Gizmos,
     debug: Res<OctreeDebug>,
@@ -65,8 +60,8 @@ fn render_octree_debug(
                 continue;
             }
 
-            for r in chunk.octree.iter_depth(depth) {
-                if r.voxel.is_none() {
+            for r in chunk.iter_depth(depth) {
+                if r.voxel().is_none() {
                     continue;
                 }
 

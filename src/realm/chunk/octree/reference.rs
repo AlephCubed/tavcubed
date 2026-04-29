@@ -35,12 +35,12 @@ pub trait VoxelGroupRef {
 
     fn depth(&self) -> usize;
 
-    fn is_voxel(&self) -> bool {
+    fn is_singular_voxel(&self) -> bool {
         self.depth() == (OCTREE_DEPTH + 1)
     }
 
-    fn is_node(&self) -> bool {
-        !self.is_voxel()
+    fn is_multiple_voxel(&self) -> bool {
+        !self.is_singular_voxel()
     }
 
     fn is_root_node(&self) -> bool {

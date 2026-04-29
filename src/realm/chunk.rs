@@ -5,11 +5,18 @@ mod voxel_grid;
 pub use octree::*;
 pub use voxel_grid::*;
 
+use crate::realm::RealmPlugin;
 use crate::realm::chunk::mesh::ChunkLOD;
 use crate::realm::chunk::mesh::ChunkMesh;
 use bevy::math::U8Vec3;
 use bevy::prelude::*;
+use bevy_auto_plugin::prelude::{AutoPlugin, auto_add_plugin};
 use std::ops::Deref;
+
+#[derive(AutoPlugin)]
+#[auto_plugin(impl_plugin_trait)]
+#[auto_add_plugin(plugin = RealmPlugin)]
+pub struct ChunkPlugin;
 
 #[derive(Component, Deref, Default, Debug, Eq, PartialEq, Clone, Copy)]
 pub struct ChunkPos(pub IVec3);

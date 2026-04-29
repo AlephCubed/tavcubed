@@ -1,8 +1,9 @@
 use crate::player::{PlayerChunk, PlayerChunkChanged};
-use crate::realm::chunk::{Chunk, ChunkPos};
+use crate::realm::chunk::{Chunk, ChunkPlugin, ChunkPos};
 use crate::realm::generation::GenerateChunk;
 use bevy::math::U8Vec3;
 use bevy::prelude::*;
+use bevy_auto_plugin::prelude::{auto_observer, auto_resource};
 use std::fmt::Formatter;
 use std::ops::{Index, IndexMut};
 
@@ -15,23 +16,13 @@ pub const STRIDE_X: usize = 1;
 pub const STRIDE_Y: usize = BUFFER_DIAMETER;
 pub const STRIDE_Z: usize = BUFFER_DIAMETER * BUFFER_DIAMETER;
 
-pub struct ChunkLoadingPlugin;
-
-impl Plugin for ChunkLoadingPlugin {
-    fn build(&self, app: &mut App) {
-        app.init_resource::<LoadedChunks>()
-            .add_observer(generate_nearby_chunks)
-            .add_observer(reload_chunks)
-            .add_observer(on_add_chunk);
-    }
-}
-
 pub type ChunkBuffer = [ChunkRef; BUFFER_SIZE];
 pub type IntoIter = std::array::IntoIter<ChunkRef, BUFFER_SIZE>;
 pub type Iter<'a> = core::slice::Iter<'a, ChunkRef>;
 pub type IterMut<'a> = core::slice::IterMut<'a, ChunkRef>;
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[auto_resource(plugin = ChunkPlugin, init)]
 pub struct LoadedChunks {
     buffer: ChunkBuffer,
     /// The position in chunk-space of the center of the loaded area.
@@ -177,6 +168,7 @@ impl std::fmt::Display for ChunkRef {
 pub struct ReloadChunks;
 
 /// Generates all chunks in a radius around the player.
+#[auto_observer(plugin = ChunkPlugin)]
 fn reload_chunks(
     _event: On<ReloadChunks>,
     mut commands: Commands,
@@ -205,6 +197,7 @@ fn reload_chunks(
 }
 
 /// Generates all new chunks when the player moves between chunk-borders.
+#[auto_observer(plugin = ChunkPlugin)]
 fn generate_nearby_chunks(
     event: On<PlayerChunkChanged>,
     mut commands: Commands,
@@ -244,6 +237,7 @@ fn generate_nearby_chunks(
     }
 }
 
+#[auto_observer(plugin = ChunkPlugin)]
 fn on_add_chunk(
     event: On<Add, (ChunkPos, Chunk)>,
     mut loaded_chunks: ResMut<LoadedChunks>,

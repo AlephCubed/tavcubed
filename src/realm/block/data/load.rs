@@ -1,3 +1,4 @@
+use crate::realm::block::BlockPlugin;
 use crate::realm::block::data::registry::{BlockRegistry, BlockRegistryInner};
 use crate::realm::block::data::{Block, BlockData, BlockTexture, BlockTextureData};
 use bevy::asset::RenderAssetUsages;
@@ -6,10 +7,12 @@ use bevy::prelude::*;
 use bevy::render::render_resource::{
     Extent3d, TextureDimension, TextureFormat, TextureViewDescriptor, TextureViewDimension,
 };
+use bevy_auto_plugin::prelude::auto_system;
 use std::collections::HashMap;
 
 const CORE_BLOCK_DATA_DIR: &str = "assets/blocks";
 
+#[auto_system(plugin = BlockPlugin, schedule = Startup)]
 pub fn load_core_blocks(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
     info!("Loading core blocks");
 

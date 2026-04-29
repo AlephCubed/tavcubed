@@ -1,20 +1,16 @@
 use crate::realm::chunk_loading::ReloadChunks;
 use bevy::camera_controller::free_camera::FreeCamera;
 use bevy::prelude::*;
+use bevy_auto_plugin::prelude::{AutoPlugin, auto_resource, auto_system};
 
+#[derive(AutoPlugin)]
+#[auto_plugin(impl_plugin_trait)]
 pub struct PlayerPlugin;
-
-impl Plugin for PlayerPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup)
-            .init_resource::<PlayerChunk>()
-            .add_systems(PreUpdate, player_chunk_changed);
-    }
-}
 
 #[derive(Component, Default)]
 pub struct Player;
 
+#[auto_system(plugin = PlayerPlugin, schedule = Startup)]
 fn setup(mut commands: Commands) {
     let translation = vec3(0.0, 32.0, 0.0);
     commands.spawn((
@@ -38,6 +34,7 @@ fn setup(mut commands: Commands) {
 }
 
 #[derive(Resource, Default)]
+#[auto_resource(plugin = PlayerPlugin, init)]
 pub struct PlayerChunk {
     pub pos: IVec3,
 }
@@ -58,6 +55,7 @@ pub struct PlayerChunkChanged {
     pub new_chunk: IVec3,
 }
 
+#[auto_system(plugin = PlayerPlugin, schedule = PreUpdate)]
 fn player_chunk_changed(
     mut commands: Commands,
     mut chunk: ResMut<PlayerChunk>,
