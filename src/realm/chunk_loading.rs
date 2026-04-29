@@ -21,6 +21,7 @@ pub type IntoIter = std::array::IntoIter<ChunkRef, BUFFER_SIZE>;
 pub type Iter<'a> = core::slice::Iter<'a, ChunkRef>;
 pub type IterMut<'a> = core::slice::IterMut<'a, ChunkRef>;
 
+/// Stores a grid of chunks around the [player's chunk](PlayerChunk).
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[auto_resource(plugin = ChunkPlugin, init)]
 pub struct LoadedChunks {
@@ -126,12 +127,18 @@ impl std::fmt::Display for LoadedChunks {
     }
 }
 
+/// The current state of a chunk in the loadable area.
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ChunkRef {
+    /// No chunk has been created, nor is in the process of being created.
     #[default]
     None,
+    /// [`GenerateChunk`] has been called for the given chunk.
     Generating,
+    /// The chunk was generated, but was empty.
+    /// To save memory, the [chunk component](Chunk) may not be present on the entity.
     Empty(Entity),
+    /// The chunk is generated at the given entity.
     Some(Entity),
 }
 
@@ -164,6 +171,7 @@ impl std::fmt::Display for ChunkRef {
     }
 }
 
+/// Regenerates all loaded chunks.
 #[derive(Event, Default, Clone, Copy)]
 pub struct ReloadChunks;
 

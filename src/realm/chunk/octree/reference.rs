@@ -1,3 +1,5 @@
+//! Fancy pointers to individual voxels or groups of voxels stored in some data structure.
+
 use crate::realm::chunk::{
     DIAMETER, OCTREE_DEPTH, Octree, OctreeNode, OctreeNodeFlag, STRIDE_X, STRIDE_Y, STRIDE_Z,
     Voxel, VoxelGrid,
@@ -8,10 +10,13 @@ use std::ops::Deref;
 
 macro_rules! define_dir_fn {
     ($ident:ident, $is_some:ident, $is_none:ident) => {
+        /// Returns a reference to the next voxel in that direction, at the same depth.
         fn $ident(&self) -> Option<Self>
         where
             Self: Sized;
 
+        /// Returns true if the voxel type of the next reference in that direction is `Some`.
+        /// If there is no reference in that direction, returns false.
         fn $is_some(&self) -> bool
         where
             Self: Sized,
@@ -19,6 +24,8 @@ macro_rules! define_dir_fn {
             self.$ident().map(|r| r.voxel().is_some()).unwrap_or(false)
         }
 
+        /// Returns true if the voxel type of the next reference in that direction is `None`.
+        /// If there is no reference in that direction, returns false.
         fn $is_none(&self) -> bool
         where
             Self: Sized,
@@ -28,25 +35,35 @@ macro_rules! define_dir_fn {
     };
 }
 
+/// A fancy pointer to an individual voxel or group of voxels stored in some data structure.
 pub trait VoxelGroupRef {
+    /// Returns a voxel that represents the entire group being referenced.
     fn voxel(&self) -> Option<Voxel>;
 
+    /// Returns the status flags for the voxel group.
+    ///
+    /// When referencing a [singular voxel](Self::is_singular_voxel), this will always return [`OctreeNodeFlag::UNIFORM`].
     fn flags(&self) -> OctreeNodeFlag;
 
+    /// The depth of the reference in an [`Octree`].
     fn depth(&self) -> usize;
 
+    /// Returns true if referencing an individual voxel (not a group).
     fn is_singular_voxel(&self) -> bool {
         self.depth() == (OCTREE_DEPTH + 1)
     }
 
+    /// Returns true if referencing a group of voxels (not an individual).
     fn is_multiple_voxel(&self) -> bool {
         !self.is_singular_voxel()
     }
 
+    /// Returns true when referencing the root node of an [`Octree`].
     fn is_root_node(&self) -> bool {
         self.depth() == 0
     }
 
+    /// Returns true when referencing a leaf node of an [`Octree`].
     fn is_leaf_node(&self) -> bool {
         self.depth() == OCTREE_DEPTH
     }
@@ -54,6 +71,9 @@ pub trait VoxelGroupRef {
     /// The chunk-space voxel position of the group's first (minimum corner) voxel.
     fn pos(&self) -> U8Vec3;
 
+    /// The diameter of the group measured in voxels.
+    ///
+    /// When referencing a [singular voxel](Self::is_singular_voxel), this will always return 1.
     fn size(&self) -> u8;
 
     define_dir_fn!(right, right_is_some, right_is_none);
@@ -64,6 +84,7 @@ pub trait VoxelGroupRef {
     define_dir_fn!(forward, forward_is_some, forward_is_none);
 }
 
+/// An iterator over some [`VoxelGroupRef`].
 pub enum VoxelGroupIter<'a, C, O>
 where
     C: Iterator<Item = VoxelRef<'a>>,
@@ -88,6 +109,7 @@ where
     }
 }
 
+/// A [`VoxelGroupRef`] that is either a singular voxel ([`VoxelRef`]) or group ([`OctreeRef`]).
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum DynVoxelGroupRef<'a> {
     Voxel(VoxelRef<'a>),
@@ -148,6 +170,7 @@ impl<'a> From<OctreeRef<'a>> for DynVoxelGroupRef<'a> {
     }
 }
 
+/// A reference to a singular voxel in a [`VoxelGrid`].
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct VoxelRef<'a> {
     voxels: &'a VoxelGrid,
@@ -232,11 +255,13 @@ impl<'a> VoxelRef<'a> {
         self.index
     }
 
+    /// Returns an [`OctreeRef`] to the voxels parent node.
     pub fn parent(self, octree: &'a Octree) -> OctreeRef<'a> {
         OctreeRef::new(octree, Octree::pos_to_node_index(self.pos(), 4))
     }
 }
 
+/// A reference to a group of voxels represented by an [`Octree`].
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct OctreeRef<'a> {
     octree: &'a Octree,
@@ -316,6 +341,7 @@ impl<'a> OctreeRef<'a> {
         self.octree
     }
 
+    /// Returns a reference to a sibling node that is `offset` nodes away.
     pub fn offset(self, offset: I8Vec3) -> Option<OctreeRef<'a>> {
         if self.depth() == 0 {
             return None;
@@ -333,6 +359,7 @@ impl<'a> OctreeRef<'a> {
             .then(|| Self::new(self.octree, index))
     }
 
+    /// Returns a reference to the parent node, or `None` if [root](Self::is_root_node).
     pub fn parent(self) -> Option<OctreeRef<'a>> {
         if self.is_root_node() {
             return None;

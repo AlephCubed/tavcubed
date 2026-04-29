@@ -18,6 +18,9 @@ impl BlockRegistry {
 }
 
 /// Maps [block](BlockId) and [voxel](VoxelId) IDs to [block data](Block).
+///
+/// By making this a separate type from the resource, we can cheaply pass references to it across threads.
+/// This also makes it immutable after being initialized.
 #[derive(Default, Debug)]
 pub struct BlockRegistryInner {
     blocks: Vec<Block>,

@@ -4,15 +4,16 @@ use serde::Deserialize;
 pub mod load;
 pub mod registry;
 
+/// Global ephemeral data on a specific block type.
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Block {
     id: BlockId,
     pub name: String,
-    pub texture: BlockTexture,
+    pub texture: VoxelTexture,
 }
 
 impl Block {
-    pub fn new(id: BlockId, name: String, texture: BlockTexture) -> Block {
+    pub fn new(id: BlockId, name: String, texture: VoxelTexture) -> Block {
         Block { id, name, texture }
     }
 
@@ -21,8 +22,9 @@ impl Block {
     }
 }
 
+/// Stores ephemeral texture ID(s) for a block. See [`BlockTexture`] for a stable equivalent.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub enum BlockTexture {
+pub enum VoxelTexture {
     Uniform(u16),
     PerFace {
         top: u16,
@@ -34,12 +36,12 @@ pub enum BlockTexture {
     },
 }
 
-impl BlockTexture {
+impl VoxelTexture {
     #[inline]
     pub fn get_face(&self, face: BlockFace) -> u16 {
         match self {
-            BlockTexture::Uniform(i) => *i,
-            BlockTexture::PerFace {
+            VoxelTexture::Uniform(i) => *i,
+            VoxelTexture::PerFace {
                 top,
                 bottom,
                 right,
@@ -68,16 +70,18 @@ pub enum BlockFace {
     Front,
 }
 
+/// Deserialized block config data. See [`Block`] for a [resolved](registry::BlockRegistryInner::register) equivalent.
 #[derive(Deserialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 struct BlockData {
     pub id: BlockId,
     pub name: String,
-    pub texture: BlockTextureData,
+    pub texture: BlockTexture,
 }
 
+/// Stores ephemeral texture ID(s) for a block. See [`VoxelTexture`] for a stable equivalent.
 #[derive(Deserialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[serde(untagged)]
-enum BlockTextureData {
+enum BlockTexture {
     Uniform(String),
     PerFace {
         top: String,

@@ -18,9 +18,11 @@ use std::ops::Deref;
 #[auto_add_plugin(plugin = RealmPlugin)]
 pub struct ChunkPlugin;
 
+/// The realm-space position of a chunk, measured in chunks (32^3 voxels).
 #[derive(Component, Deref, Default, Debug, Eq, PartialEq, Clone, Copy)]
 pub struct ChunkPos(pub IVec3);
 
+/// A 32^3 piece of the realm's voxels.
 #[derive(Component, Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[require(ChunkMesh, ChunkPos, ChunkLOD)]
 pub struct Chunk {
@@ -37,12 +39,21 @@ impl Deref for Chunk {
 }
 
 impl Chunk {
+    /// Creates a new chunk from a [`VoxelGrid`].
+    ///
+    /// # Performance
+    /// This is the preferred way to instantiate a chunk, as modifications made through the chunk's
+    /// setters must update the [`Octree`].
     #[must_use]
     pub fn new(voxel_grid: VoxelGrid) -> Self {
         let octree = Octree::new(&voxel_grid);
         Self { voxel_grid, octree }
     }
 
+    /// Creates a chunk where every block is set to the given voxel.
+    ///
+    /// For a chunk full of air, use [`Chunk::default()`].
+    #[must_use]
     pub fn full(voxel: Voxel) -> Self {
         Self {
             octree: Octree::full(voxel),
@@ -50,6 +61,7 @@ impl Chunk {
         }
     }
 
+    /// Creates a chunk with alternating voxels between `a` and `b`.
     #[must_use]
     pub fn checkerboard(a: Option<Voxel>, b: Option<Voxel>) -> Self {
         Self::new(VoxelGrid::checkerboard(a, b))
@@ -68,14 +80,14 @@ impl Chunk {
         self.set(VoxelGrid::pos_to_index(pos), voxel)
     }
 
-    /// Adds a voxel at a specific index, if it is empty. Otherwise, will return `Err` with the current voxel.
+    /// Adds a voxel at a specific index, if it is empty; otherwise returns `Err` with the current voxel.
     pub fn place(&mut self, index: usize, voxel: Voxel) -> Result<(), Voxel> {
         self.voxel_grid
             .place(index, voxel)
             .inspect(|_| self.octree.update(index, &self.voxel_grid))
     }
 
-    /// Adds a voxel at a specific position, if it is empty. Otherwise, will return `Err` with the current voxel.
+    /// Adds a voxel at a specific position, if it is empty; otherwise, returns `Err` with the current voxel.
     #[inline]
     pub fn place_pos(&mut self, pos: U8Vec3, voxel: Voxel) -> std::result::Result<(), Voxel> {
         self.place(VoxelGrid::pos_to_index(pos), voxel)
@@ -104,7 +116,7 @@ impl Chunk {
     /// Returns an iterator over all nodes/voxels at a given depth in the tree.
     ///
     /// # Panics
-    /// Panics if `depth` is greater than [`OCTREE_DEPTH`].
+    /// Panics if `depth` is greater than [`OCTREE_DEPTH + 1`](OCTREE_DEPTH).
     pub fn iter_depth(
         &self,
         depth: usize,

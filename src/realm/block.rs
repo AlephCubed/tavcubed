@@ -1,3 +1,9 @@
+//! Data and identifiers for blocks/voxels.
+//!
+//! In general, "block" refers to stable data stored on disk
+//! while "voxel" refers to ephemeral data stored in memory,
+//! although this distinction is somewhat fuzzy.
+
 pub mod data;
 
 use crate::realm::RealmPlugin;
@@ -46,6 +52,9 @@ impl From<NonZeroU16> for VoxelId {
 pub struct BlockId(String);
 
 impl BlockId {
+    /// Creates a new block ID from its mod and block portions.
+    ///
+    /// For creating a block ID from a single string, use [`TryFrom`] instead.
     pub fn new(
         mod_id: impl Into<String>,
         block_id: impl Into<String>,

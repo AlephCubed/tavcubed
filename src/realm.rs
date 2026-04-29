@@ -1,3 +1,5 @@
+//! The world/realm that the game takes place in.
+
 pub mod block;
 pub mod chunk;
 pub mod chunk_loading;

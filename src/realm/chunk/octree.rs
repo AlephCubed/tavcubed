@@ -5,7 +5,7 @@ pub use reference::*;
 
 use crate::realm::chunk::octree::z_order_curve::{pos_to_z_order, z_order_to_pos};
 use crate::realm::chunk::voxel_grid::Voxel;
-use crate::realm::chunk::{DIAMETER, STRIDE_X, STRIDE_Y, STRIDE_Z, VoxelGrid};
+use crate::realm::chunk::{Chunk, DIAMETER, STRIDE_X, STRIDE_Y, STRIDE_Z, VoxelGrid};
 use bevy::math::U8Vec3;
 use bitflags::bitflags;
 use std::collections::HashMap;
@@ -17,12 +17,18 @@ pub const OCTREE_NODE_COUNT: usize = (8 * 8usize.pow(OCTREE_DEPTH as u32) - 1) /
 
 pub type OctreeBuffer = [OctreeNode; OCTREE_NODE_COUNT];
 
+/// An octree structure over a [`VoxelGrid`].
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Octree {
     buffer: OctreeBuffer,
 }
 
 impl Octree {
+    /// Instantiates a new octree from a voxel grid.
+    ///
+    /// # Performance
+    /// This is the preferred way to instantiate an octree,
+    /// as [`Octree::update()`] is a somewhat costly operation.
     pub fn new(voxels: &VoxelGrid) -> Self {
         let mut octree = Octree::default();
 
@@ -38,6 +44,9 @@ impl Octree {
         octree
     }
 
+    /// Creates an octree where every node is set to the given voxel.
+    ///
+    /// For an octree full of air, use [`Chunk::default()`].
     pub const fn full(voxel: Voxel) -> Self {
         Self {
             buffer: [OctreeNode {
@@ -88,6 +97,7 @@ impl Octree {
     }
 
     /// Returns the index of the parent of the given node.
+    ///
     /// # Panics
     /// If the node is root (0).
     #[inline]
@@ -104,6 +114,9 @@ impl Octree {
     }
 
     /// Converts a node index at any layer into the voxel position of its first (minimum corner) voxel.
+    ///
+    /// # Performance
+    /// This is a somewhat costly operation and should be avoided on the hot path.
     #[inline]
     fn node_index_to_pos(index: usize) -> U8Vec3 {
         // Todo optimize.
@@ -135,14 +148,20 @@ impl Octree {
         })
     }
 
-    pub(super) fn update(&mut self, voxel: usize, voxels: &VoxelGrid) {
+    /// Recursively updates the ancestors of a voxel in the given grid.
+    ///
+    /// # Performance
+    /// This is a somewhat costly operation, so for batch changes try to update only once
+    /// (for example, [`Octree::new`]).
+    pub(super) fn update(&mut self, voxel: usize, grid: &VoxelGrid) {
         let mut current = Self::pos_to_node_index(VoxelGrid::index_to_pos(voxel), 4);
 
-        while self.update_node(current, voxels) && current != 0 {
+        while self.update_node(current, grid) && current != 0 {
             current = Self::parent_index(current);
         }
     }
 
+    /// Updates the given node.
     fn update_node(&mut self, node: usize, voxels: &VoxelGrid) -> bool {
         let node = OctreeRef::new(self, node);
 
@@ -215,11 +234,11 @@ impl Octree {
     /// Returns an iterator over all nodes at a given depth in the tree.
     ///
     /// # Panics
-    /// Panics if `depth` is greater than or equal to [`OCTREE_DEPTH`].
+    /// Panics if `depth` is greater than [`OCTREE_DEPTH`].
     pub fn iter_depth(&self, depth: usize) -> impl Iterator<Item = OctreeRef<'_>> {
         debug_assert!(
             depth <= OCTREE_DEPTH,
-            "Depth must be less than {OCTREE_DEPTH}, got {depth}"
+            "Depth must be less than or equal to {OCTREE_DEPTH}, got {depth}"
         );
 
         let start = Self::DEPTH_START[depth];
@@ -240,6 +259,7 @@ impl Default for Octree {
     }
 }
 
+/// A single node in an [`Octree`].
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct OctreeNode {
     voxel: Option<Voxel>,
@@ -247,6 +267,10 @@ pub struct OctreeNode {
 }
 
 impl OctreeNode {
+    /// Returns the most common voxel in the node's descendants.
+    ///
+    /// If the [`MINORITY`](OctreeNodeFlag::MINORITY) flag is set, this will store the *second* most common voxel.
+    /// So this will only return ait/`None` if *all* descendants are `None`.
     pub fn voxel(&self) -> Option<Voxel> {
         self.voxel
     }
@@ -266,9 +290,13 @@ impl From<Option<Voxel>> for OctreeNode {
 }
 
 bitflags! {
+    /// Status flags for an [`OctreeNode`].
     #[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
     pub struct OctreeNodeFlag: u8 {
+        /// Indicates that all descendants of a node are the same.
         const UNIFORM = 1 << 0;
+        /// Indicates that the most common voxel in the node's descendants is air/`None`.
+        /// [`OctreeNode::voxel`] will return the *second* most common voxel.
         const MINORITY = 1 << 1;
     }
 }

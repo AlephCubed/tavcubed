@@ -8,6 +8,7 @@ use crossbeam_channel::{Receiver, Sender};
 use noiz::prelude::common_noise::Simplex;
 use noiz::prelude::*;
 
+/// Generate a chunk at the given position.
 #[derive(Message, Clone, Copy, Debug, PartialEq)]
 #[auto_message(plugin = ChunkPlugin)]
 pub struct GenerateChunk {

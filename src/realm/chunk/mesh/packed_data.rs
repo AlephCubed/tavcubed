@@ -1,6 +1,7 @@
-use crate::realm::block::data::{BlockFace, BlockTexture};
+use crate::realm::block::data::{BlockFace, VoxelTexture};
 use bevy::math::{U8Vec2, U8Vec3};
 
+/// Packs some voxel data for use in a chunk meshes vertex data.
 #[inline]
 pub fn pack(data: VoxelData, block_face: BlockFace) -> [u32; 2] {
     [
@@ -20,5 +21,5 @@ pub fn pack(data: VoxelData, block_face: BlockFace) -> [u32; 2] {
 pub struct VoxelData {
     pub position: U8Vec3,
     pub size: U8Vec2,
-    pub texture: BlockTexture,
+    pub texture: VoxelTexture,
 }

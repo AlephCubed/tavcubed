@@ -1,6 +1,6 @@
 use crate::realm::block::BlockPlugin;
 use crate::realm::block::data::registry::{BlockRegistry, BlockRegistryInner};
-use crate::realm::block::data::{Block, BlockData, BlockTexture, BlockTextureData};
+use crate::realm::block::data::{Block, BlockData, BlockTexture, VoxelTexture};
 use bevy::asset::RenderAssetUsages;
 use bevy::image::{ImageAddressMode, ImageSampler, ImageSamplerDescriptor};
 use bevy::prelude::*;
@@ -37,18 +37,18 @@ pub fn load_core_blocks(mut commands: Commands, mut images: ResMut<Assets<Image>
     // Collect texture paths.
     let mut texture_map = TextureMap::default();
 
-    let texture_refs: Vec<BlockTexture> = block_data
+    let texture_refs: Vec<VoxelTexture> = block_data
         .iter()
         .map(|block_data| match &block_data.texture {
-            BlockTextureData::Uniform(path) => BlockTexture::Uniform(texture_map.resolve(path)),
-            BlockTextureData::PerFace {
+            BlockTexture::Uniform(path) => VoxelTexture::Uniform(texture_map.resolve(path)),
+            BlockTexture::PerFace {
                 top,
                 bottom,
                 right,
                 left,
                 back,
                 front,
-            } => BlockTexture::PerFace {
+            } => VoxelTexture::PerFace {
                 top: texture_map.resolve(top),
                 bottom: texture_map.resolve(bottom),
                 right: texture_map.resolve(right),

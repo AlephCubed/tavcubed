@@ -4,7 +4,7 @@ use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
 use tavcubed::realm::block::BlockId;
 use tavcubed::realm::block::data::registry::BlockRegistryInner;
-use tavcubed::realm::block::data::{Block, BlockTexture};
+use tavcubed::realm::block::data::{Block, VoxelTexture};
 use tavcubed::realm::chunk::mesh::{ChunkLOD, mesh_chunk};
 use tavcubed::realm::chunk::{Chunk, Voxel};
 
@@ -13,7 +13,7 @@ fn get_registry() -> BlockRegistryInner {
     registry.register(Block::new(
         BlockId::new("test", "block").unwrap(),
         "block".to_string(),
-        BlockTexture::Uniform(0),
+        VoxelTexture::Uniform(0),
     ));
     registry
 }

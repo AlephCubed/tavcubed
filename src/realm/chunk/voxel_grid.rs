@@ -17,6 +17,11 @@ pub type IntoIter = std::array::IntoIter<Option<Voxel>, VOXEL_COUNT>;
 pub type Iter<'a> = core::slice::Iter<'a, Option<Voxel>>;
 pub type IterMut<'a> = core::slice::IterMut<'a, Option<Voxel>>;
 
+/// A grid of 32^3 voxels.
+///
+/// # Performance
+/// This is the preferred way to instantiate a [`Chunk`](super::Chunk), as modifications made through the chunk's
+/// setters must update the [`Octree`].
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct VoxelGrid {
     buffer: VoxelBuffer,
@@ -76,6 +81,7 @@ impl VoxelGrid {
         (pos.z as usize * STRIDE_Z) + (pos.y as usize * STRIDE_Y) + pos.x as usize
     }
 
+    /// Creates a new grid from a raw [`VoxelBuffer`].
     #[must_use]
     pub fn new(buffer: VoxelBuffer) -> Self {
         Self {
@@ -84,6 +90,9 @@ impl VoxelGrid {
         }
     }
 
+    /// Creates a grid where every block is set to the given voxel.
+    ///
+    /// For a grid full of air, use [`VoxelGrid::default()`].
     #[must_use]
     pub fn full(voxel: Voxel) -> Self {
         Self {
@@ -92,6 +101,7 @@ impl VoxelGrid {
         }
     }
 
+    /// Creates a grid of alternating voxels between `a` and `b`.
     #[must_use]
     pub fn checkerboard(a: Option<Voxel>, b: Option<Voxel>) -> Self {
         let mut buffer = [None; VOXEL_COUNT];
@@ -161,6 +171,10 @@ impl VoxelGrid {
     }
 
     /// Gets the value at a specific position.
+    ///
+    /// # Performance
+    /// This is *not* the native indexing format for [`VoxelBuffer`].
+    /// Use [`VoxelGrid::get`] where possible.
     #[inline]
     #[must_use]
     pub fn get_pos(&self, pos: U8Vec3) -> &Option<Voxel> {
@@ -175,6 +189,10 @@ impl VoxelGrid {
     }
 
     /// Returns a [`VoxelRef`] to the value at a specific position.
+    ///
+    /// # Performance
+    /// This is *not* the native indexing format for [`VoxelBuffer`].
+    /// Use [`VoxelGrid::get_ref`] where possible.
     #[inline]
     #[must_use]
     pub fn get_ref_pos(&self, pos: U8Vec3) -> VoxelRef<'_> {
@@ -198,6 +216,10 @@ impl VoxelGrid {
     }
 
     /// Sets the value at a specific position, returning the previous value.
+    ///
+    /// # Performance
+    /// This is *not* the native indexing format for [`VoxelBuffer`].
+    /// Use [`VoxelGrid::set`] where possible.
     #[inline]
     pub fn set_pos(&mut self, pos: U8Vec3, voxel: Option<Voxel>) -> Option<Voxel> {
         self.set(Self::pos_to_index(pos), voxel)
@@ -217,6 +239,10 @@ impl VoxelGrid {
     }
 
     /// Adds a voxel at a specific position, if it is empty. Otherwise, will return `Err` with the current voxel.
+    ///
+    /// # Performance
+    /// This is *not* the native indexing format for [`VoxelBuffer`].
+    /// Use [`VoxelGrid::place`] where possible.
     #[inline]
     pub fn place_pos(&mut self, pos: U8Vec3, voxel: Voxel) -> Result<(), Voxel> {
         self.place(Self::pos_to_index(pos), voxel)
@@ -234,6 +260,10 @@ impl VoxelGrid {
     }
 
     /// Erases the voxel at the specified position and returns it.
+    ///
+    /// # Performance
+    /// This is *not* the native indexing format for [`VoxelBuffer`].
+    /// Use [`VoxelGrid::erase`] where possible.
     #[inline]
     pub fn erase_pos(&mut self, pos: U8Vec3) -> Option<Voxel> {
         self.erase(Self::pos_to_index(pos))
@@ -298,6 +328,9 @@ impl std::fmt::Display for VoxelGrid {
     }
 }
 
+/// The data of a specific voxel index.
+///
+/// For global data on a block *type*, see [`Block`](crate::realm::block::data::Block).
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Voxel {
     pub id: VoxelId,
@@ -308,6 +341,10 @@ impl Voxel {
         Self { id }
     }
 
+    /// Creates a new voxel from an unchecked ID.
+    ///
+    /// # Panics
+    /// Panics if the ID is zero.
     pub fn new_unwrap(id: u16) -> Self {
         Self::new(VoxelId::new(id).unwrap())
     }

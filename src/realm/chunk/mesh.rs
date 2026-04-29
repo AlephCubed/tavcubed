@@ -29,6 +29,9 @@ impl ChunkMesh {
         MeshVertexAttribute::new("packed_data", 806567756968, VertexFormat::Uint32x2);
 }
 
+/// Stores the current level-of-detail that a [`Chunk`] should be meshed at.
+///
+/// Ranges from five (full detail) to zero (single cube).
 #[doc(alias = "ChunkLevelOfDetail")]
 #[derive(Component, Deref, Debug, Eq, PartialEq, Clone, Copy)]
 pub struct ChunkLOD(usize);
