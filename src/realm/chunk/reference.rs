@@ -1,6 +1,6 @@
 //! Fancy pointers to individual voxels or groups of voxels stored in some data structure.
 
-use crate::realm::chunk::{OCTREE_DEPTH, Octree, OctreeNodeFlag, OctreeRef, Voxel, VoxelRef};
+use crate::realm::chunk::{OCTREE_DEPTH, OctreeNodeFlag, OctreeRef, Voxel, VoxelRef};
 use bevy::math::U8Vec3;
 use std::fmt::{Debug, Formatter};
 
@@ -41,7 +41,7 @@ pub trait VoxelGroupRef {
     /// When referencing a [singular voxel](Self::is_singular_voxel), this will always return [`OctreeNodeFlag::UNIFORM`].
     fn flags(&self) -> OctreeNodeFlag;
 
-    /// The depth of the reference in an [`Octree`].
+    /// The depth of the reference in an [`Octree`](crate::realm::chunk::Octree).
     fn depth(&self) -> usize;
 
     /// Returns true if referencing an individual voxel (not a group).
@@ -155,8 +155,8 @@ impl Debug for DynVoxelGroupRef<'_> {
 }
 
 impl<'a> From<VoxelRef<'a>> for DynVoxelGroupRef<'a> {
-    fn from(octree: VoxelRef<'a>) -> Self {
-        DynVoxelGroupRef::Voxel(octree)
+    fn from(voxel: VoxelRef<'a>) -> Self {
+        DynVoxelGroupRef::Voxel(voxel)
     }
 }
 
