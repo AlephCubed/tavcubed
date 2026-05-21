@@ -5260,11 +5260,9 @@ dependencies = [
  "criterion",
  "crossbeam-channel",
  "image",
- "log",
  "noiz",
  "serde",
  "toml",
- "tracing",
 ]
 
 [[package]]

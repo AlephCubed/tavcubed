@@ -10,18 +10,9 @@ bitflags = "2.11"
 bytemuck = "1.25"
 crossbeam-channel = "0.5"
 image = "0.25"
-# Set max log levels. This helps avoid unwanted low-severity log spam, which can affect performance.
-log = { version = "0.4", features = [
-  "max_level_debug",
-  "release_max_level_warn",
-] }
 noiz = "0.4"
 serde = "1.0"
 toml = "1.1"
-tracing = { version = "0.1", features = [
-  "max_level_debug",
-  "release_max_level_warn",
-] }
 
 [dev-dependencies]
 criterion = "0.8"
