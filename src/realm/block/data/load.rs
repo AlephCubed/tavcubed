@@ -2,6 +2,7 @@ use crate::realm::block::BlockPlugin;
 use crate::realm::block::data::registry::{BlockRegistry, BlockRegistryInner};
 use crate::realm::block::data::{Block, BlockData, BlockTexture, VoxelTexture};
 use bevy::asset::RenderAssetUsages;
+use bevy::asset::io::file::FileAssetReader;
 use bevy::image::{ImageAddressMode, ImageSampler, ImageSamplerDescriptor};
 use bevy::prelude::*;
 use bevy::render::render_resource::{
@@ -10,16 +11,19 @@ use bevy::render::render_resource::{
 use bevy_auto_plugin::prelude::auto_system;
 use std::collections::HashMap;
 
-const CORE_BLOCK_DATA_DIR: &str = "assets/blocks";
+const ASSET_DIR: &str = "assets";
+const CORE_BLOCK_DATA_DIR: &str = "blocks";
 
 #[auto_system(plugin = BlockPlugin, schedule = Startup)]
 pub fn load_core_blocks(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
-    info!("Loading core blocks");
-
     // Deserialize block configs.
     let mut block_data = Vec::new();
 
-    for entry in std::fs::read_dir(CORE_BLOCK_DATA_DIR).unwrap() {
+    let asset_dir = FileAssetReader::get_base_path().join(ASSET_DIR);
+
+    info!("Loading core blocks with asset dir {asset_dir:?}");
+
+    for entry in std::fs::read_dir(asset_dir.join(CORE_BLOCK_DATA_DIR)).unwrap() {
         let entry = entry.unwrap();
         let path = entry.path();
 
@@ -64,7 +68,7 @@ pub fn load_core_blocks(mut commands: Commands, mut images: ResMut<Assets<Image>
         .paths
         .iter()
         .map(|path| {
-            image::open(format!("assets/{}", path))
+            image::open(asset_dir.join(path))
                 .unwrap_or_else(|_| panic!("Failed to load texture: {}", path))
                 .into_rgba8()
         })
