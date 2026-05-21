@@ -198,10 +198,10 @@ fn mesh_finished(
             insert(
                 (
                     Mesh3d(handle),
-                    MeshMaterial3d(materials.add(ChunkMaterial {
-                        chunk_pos: pos.0,
-                        texture_array: registry.textures.clone().unwrap(),
-                    })),
+                    MeshMaterial3d(materials.add(ChunkMaterial::new(
+                        pos.0,
+                        registry.textures.clone().unwrap(),
+                    ))),
                 ),
                 InsertMode::Replace,
             ),

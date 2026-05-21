@@ -1,6 +1,7 @@
 #import bevy_pbr::mesh_view_bindings::view
 
 @group(#{MATERIAL_BIND_GROUP}) @binding(0) var<uniform> chunk_pos: vec3<i32>;
+@group(#{MATERIAL_BIND_GROUP}) @binding(0) var<uniform> _padding: i32;
 
 @group(#{MATERIAL_BIND_GROUP}) @binding(1) var array_texture: texture_2d_array<f32>;
 @group(#{MATERIAL_BIND_GROUP}) @binding(2) var array_texture_sampler: sampler;
