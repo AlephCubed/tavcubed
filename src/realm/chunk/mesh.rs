@@ -168,7 +168,7 @@ pub fn mesh_chunk(chunk: Chunk, lod: ChunkLOD, registry: &BlockRegistryInner) ->
 
     Mesh::new(
         PrimitiveTopology::TriangleList,
-        RenderAssetUsages::default(),
+        RenderAssetUsages::RENDER_WORLD,
     )
     .with_inserted_indices(Indices::U32(indices))
     .with_inserted_attribute(ChunkMesh::ATTRIBUTE_PACKED_DATA, packed)
