@@ -64,6 +64,11 @@ pub trait VoxelGroupRef {
         self.depth() == OCTREE_DEPTH
     }
 
+    /// Returns true when referencing a group of air voxels (can be skipped when ray casting).
+    fn is_passthrough(&self) -> bool {
+        self.flags().contains(OctreeNodeFlag::UNIFORM) && self.voxel().is_none()
+    }
+
     /// The chunk-space voxel position of the group's first (minimum corner) voxel.
     fn pos(&self) -> U8Vec3;
 

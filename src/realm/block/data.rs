@@ -1,4 +1,6 @@
 use crate::realm::block::BlockId;
+use bevy::math::U8Vec3;
+use bevy::prelude::*;
 use serde::Deserialize;
 
 pub mod load;
@@ -60,14 +62,91 @@ impl VoxelTexture {
     }
 }
 
+/// A specific side of a block/voxel.
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
 pub enum BlockFace {
+    /// Facing up (y+).
+    #[doc(alias = "Up", alias = "Y")]
     Top,
+    /// Facing down (y-).
+    #[doc(alias = "Down", alias = "NegY")]
     Bottom,
+    /// Facing right (x+).
+    #[doc(alias = "X")]
     Right,
+    /// Facing left (x-).
+    #[doc(alias = "NegX")]
     Left,
+    /// Facing away (z+)
+    #[doc(alias = "Z")]
     Back,
+    /// Facing forward (z-)
+    #[doc(alias = "NegZ")]
     Front,
+}
+
+impl BlockFace {
+    pub fn flip(&self) -> Self {
+        match self {
+            Self::Top => Self::Bottom,
+            Self::Bottom => Self::Top,
+            Self::Right => Self::Left,
+            Self::Left => Self::Right,
+            Self::Back => Self::Front,
+            Self::Front => Self::Back,
+        }
+    }
+
+    pub fn normal(&self) -> Dir3 {
+        match self {
+            BlockFace::Top => Dir3::Y,
+            BlockFace::Bottom => Dir3::NEG_Z,
+            BlockFace::Right => Dir3::X,
+            BlockFace::Left => Dir3::NEG_X,
+            BlockFace::Back => Dir3::Z,
+            BlockFace::Front => Dir3::NEG_Z,
+        }
+    }
+
+    pub fn from_direction(dir: Dir3) -> Self {
+        let abs = dir.abs();
+
+        if abs.x >= abs.y && abs.x >= abs.z {
+            if dir.x >= 0.0 {
+                Self::Right
+            } else {
+                Self::Left
+            }
+        } else if abs.y >= abs.z {
+            if dir.y >= 0.0 {
+                Self::Top
+            } else {
+                Self::Bottom
+            }
+        } else {
+            if dir.z >= 0.0 {
+                Self::Back
+            } else {
+                Self::Front
+            }
+        }
+    }
+
+    #[rustfmt::skip]
+    pub fn from_axis(axis: VecAxis, vec: U8Vec3) -> Self {
+        match axis {
+            VecAxis::X => if vec.x > 0 { BlockFace::Right } else { BlockFace::Left }
+            VecAxis::Y => if vec.y > 0 { BlockFace::Top } else { BlockFace::Bottom }
+            VecAxis::Z => if vec.z > 0 { BlockFace::Back } else { BlockFace::Front }
+        }
+    }
+}
+
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
+pub enum VecAxis {
+    X,
+    Y,
+    Z,
 }
 
 /// Deserialized block config data. See [`Block`] for a [resolved](registry::BlockRegistryInner::register) equivalent.
@@ -91,4 +170,19 @@ enum BlockTexture {
         back: String,
         front: String,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_direction() {
+        assert_eq!(BlockFace::from_direction(Dir3::X), BlockFace::Right);
+        assert_eq!(BlockFace::from_direction(Dir3::NEG_X), BlockFace::Left);
+        assert_eq!(BlockFace::from_direction(Dir3::Y), BlockFace::Top);
+        assert_eq!(BlockFace::from_direction(Dir3::NEG_Y), BlockFace::Bottom);
+        assert_eq!(BlockFace::from_direction(Dir3::Z), BlockFace::Back);
+        assert_eq!(BlockFace::from_direction(Dir3::NEG_Z), BlockFace::Front);
+    }
 }

@@ -100,7 +100,6 @@ impl<'a> VoxelRef<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::realm::chunk::Chunk;
 
     #[test]
     fn voxel_grid_ref_right() {

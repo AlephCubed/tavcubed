@@ -1,9 +1,11 @@
 pub mod mesh;
 mod octree;
+mod raycast;
 mod reference;
 mod voxel_grid;
 
 pub use octree::*;
+pub use raycast::*;
 pub use reference::*;
 pub use voxel_grid::*;
 

@@ -4,6 +4,7 @@ pub use reference::*;
 
 use crate::realm::block::VoxelId;
 use bevy::math::U8Vec3;
+use bevy::prelude::*;
 use std::fmt::Formatter;
 use std::ops::Index;
 
@@ -82,6 +83,27 @@ impl VoxelGrid {
     pub fn pos_to_index(pos: U8Vec3) -> usize {
         crate::debug_asset_valid_voxel_pos!(pos);
         (pos.z as usize * STRIDE_Z) + (pos.y as usize * STRIDE_Y) + pos.x as usize
+    }
+
+    #[inline(always)]
+    pub fn vec_to_pos(vec: impl Into<Vec3>) -> Option<U8Vec3> {
+        let vec = vec.into();
+
+        if (vec.x >= 0.0 && vec.x <= 32.0)
+            && (vec.y >= 0.0 && vec.y <= 32.0)
+            && (vec.z >= 0.0 && vec.z <= 32.0)
+        {
+            Some(vec.as_u8vec3())
+        } else {
+            None
+        }
+    }
+
+    #[inline(always)]
+    pub fn vec_to_pos_clamped(vec: impl Into<Vec3>) -> U8Vec3 {
+        vec.into()
+            .as_u8vec3()
+            .clamp(U8Vec3::splat(0), U8Vec3::splat(31))
     }
 
     /// Creates a new grid from a raw [`VoxelBuffer`].
