@@ -4,6 +4,7 @@ pub mod block;
 pub mod chunk;
 pub mod chunk_loading;
 pub mod generation;
+pub mod voxel_query;
 
 use bevy_auto_plugin::prelude::AutoPlugin;
 

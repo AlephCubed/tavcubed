@@ -46,7 +46,7 @@ impl Chunk {
             // Internal
             Some(pos) => {
                 if self.get_ref_pos(pos).is_some() {
-                    println!("Internal hit at {pos}, {distance} from origin.");
+                    trace!("Internal hit at {pos}, {distance} from origin.");
 
                     return Some(RaycastHit {
                         voxel: self.get_ref_pos(pos).into(),
@@ -64,7 +64,7 @@ impl Chunk {
                 let pos = VoxelGrid::vec_to_pos_clamped(point);
 
                 if self.get_ref_pos(pos).is_some() {
-                    println!("Impact on initial voxel at {pos}, {distance} from origin.");
+                    trace!("Impact on initial voxel at {pos}, {distance} from origin.");
 
                     // Todo floating point precision errors.
                     let face = if point.x == 32.0 {
@@ -94,7 +94,7 @@ impl Chunk {
             }
         };
 
-        println!("Initial voxel found at {pos}, {distance} from origin.");
+        trace!("Initial voxel found at {pos}, {distance} from origin.");
 
         let step = ray.direction_recip().map(|a| a.signum()).as_u8vec3();
         let delta = ray.direction_recip().abs();
@@ -106,7 +106,7 @@ impl Chunk {
         let mut axis = VecAxis::X;
 
         while distance < ray.max {
-            println!("Testing {pos}. {distance} traveled so far.");
+            trace!("Testing {pos}. {distance} traveled so far.");
 
             let voxel = self.voxel_grid.get_ref_pos(pos);
 

@@ -36,6 +36,12 @@ fn on_add_chunk_pos(mut world: DeferredWorld, ctx: HookContext) {
     target.get_mut::<Transform>().unwrap().translation = (pos * 32).as_vec3();
 }
 
+impl ChunkPos {
+    pub fn vec_to_chunk_pos(pos: impl Into<Vec3>) -> IVec3 {
+        pos.into().as_ivec3() / 32
+    }
+}
+
 /// A 32^3 piece of the realm's voxels.
 #[derive(Component, Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[require(ChunkMesh, ChunkPos, ChunkLOD)]

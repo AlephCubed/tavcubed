@@ -1,6 +1,9 @@
-use crate::realm::chunk::OCTREE_DEPTH;
 use crate::realm::chunk::mesh::ChunkLOD;
+use crate::realm::chunk::{Chunk, OCTREE_DEPTH};
 use crate::realm::chunk_loading::ReloadChunks;
+use crate::realm::voxel_query::VoxelQuery;
+use bevy::camera_controller::free_camera::FreeCameraState;
+use bevy::math::bounding::RayCast3d;
 use bevy::pbr::wireframe::WireframeConfig;
 use bevy::prelude::*;
 use bevy_auto_plugin::prelude::*;
@@ -63,6 +66,31 @@ fn debug_keybinds(
 
                 info!("Changed octree debug flags to {:?}", *octree_debug);
             }
+        }
+    }
+}
+
+#[auto_system(plugin = DebugPlugin, schedule = Update)]
+fn debug_place(
+    mouse_input: Res<ButtonInput<MouseButton>>,
+    player: Single<(&Transform, &FreeCameraState)>,
+    voxel_query: VoxelQuery,
+) {
+    let (transform, camera_state) = *player;
+
+    if !camera_state.enabled {
+        return;
+    }
+
+    if mouse_input.just_pressed(MouseButton::Left) {
+        let hit = voxel_query.cast_ray(RayCast3d::new(
+            transform.translation,
+            Dir3::new(transform.rotation * Vec3::Z).unwrap(),
+            64.0,
+        ));
+
+        if let Some(hit) = hit {
+            todo!()
         }
     }
 }
