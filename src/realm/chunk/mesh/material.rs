@@ -1,3 +1,5 @@
+use crate::realm::block::data::load::load_core_blocks;
+use crate::realm::block::data::registry::BlockRegistry;
 use crate::realm::chunk::ChunkPlugin;
 use crate::realm::chunk::mesh::ChunkMesh;
 use bevy::mesh::MeshVertexBufferLayoutRef;
@@ -7,13 +9,14 @@ use bevy::render::render_resource::{
     AsBindGroup, RenderPipelineDescriptor, SpecializedMeshPipelineError,
 };
 use bevy::shader::ShaderRef;
-use bevy_auto_plugin::prelude::{AutoPlugin, auto_add_plugin};
+use bevy_auto_plugin::prelude::{AutoPlugin, auto_add_plugin, auto_plugin, auto_system};
 
 #[derive(AutoPlugin)]
 #[auto_add_plugin(plugin = ChunkPlugin)]
 pub struct ChunkMaterialPlugin;
 
 impl Plugin for ChunkMaterialPlugin {
+    #[auto_plugin]
     fn build(&self, app: &mut App) {
         app.add_plugins(MaterialPlugin::<ChunkMaterial>::default());
     }
@@ -53,4 +56,22 @@ impl Material for ChunkMaterial {
         descriptor.vertex.buffers = vec![vertex_layout];
         Ok(())
     }
+}
+
+#[derive(Resource)]
+pub struct ChunkMaterialHandle(pub Handle<ChunkMaterial>);
+
+#[auto_system(plugin = ChunkMaterialPlugin, schedule = Startup, config(after = load_core_blocks))]
+fn load_chunk_material(
+    mut commands: Commands,
+    registry: Res<BlockRegistry>,
+    mut materials: ResMut<Assets<ChunkMaterial>>,
+) {
+    let material = materials.add(ChunkMaterial {
+        texture_array: registry.textures.clone().unwrap(),
+    });
+
+    debug!("Created chunk material");
+
+    commands.insert_resource(ChunkMaterialHandle(material))
 }

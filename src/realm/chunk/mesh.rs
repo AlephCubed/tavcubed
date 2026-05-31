@@ -5,7 +5,7 @@ mod packed_data;
 
 use crate::realm::block::data::BlockFace;
 use crate::realm::block::data::registry::{BlockRegistry, BlockRegistryInner};
-use crate::realm::chunk::mesh::material::ChunkMaterial;
+use crate::realm::chunk::mesh::material::ChunkMaterialHandle;
 use crate::realm::chunk::mesh::packed_data::{VoxelData, pack};
 use crate::realm::chunk::{Chunk, ChunkPlugin, ChunkPos, OCTREE_DEPTH, VoxelGroupRef};
 use bevy::asset::RenderAssetUsages;
@@ -175,13 +175,12 @@ pub fn mesh_chunk(chunk: Chunk, lod: ChunkLOD, registry: &BlockRegistryInner) ->
 }
 
 /// Applies finished meshes to changed chunks.
-#[auto_system(plugin = ChunkPlugin, schedule = Update)]
+#[auto_system(plugin = ChunkPlugin, schedule = Update, config(run_if = resource_exists::<ChunkMaterialHandle>))]
 fn mesh_finished(
     mut commands: Commands,
     channel: Res<ChunkMeshChannel>,
-    registry: Res<BlockRegistry>,
+    material: Res<ChunkMaterialHandle>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ChunkMaterial>>,
     mut chunk_meshes: Query<(&mut ChunkMesh, &ChunkPos)>,
 ) {
     for msg in channel.receiver.try_iter() {
@@ -196,12 +195,7 @@ fn mesh_finished(
         mesh.0 = handle.clone();
         commands.entity(msg.chunk).queue_handled(
             insert(
-                (
-                    Mesh3d(handle),
-                    MeshMaterial3d(materials.add(ChunkMaterial {
-                        texture_array: registry.textures.clone().unwrap(),
-                    })),
-                ),
+                (Mesh3d(handle), MeshMaterial3d(material.0.clone())),
                 InsertMode::Replace,
             ),
             |_error, _ctx| {
