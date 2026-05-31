@@ -10,6 +10,8 @@ pub use voxel_grid::*;
 use crate::realm::RealmPlugin;
 use crate::realm::chunk::mesh::ChunkLOD;
 use crate::realm::chunk::mesh::ChunkMesh;
+use bevy::ecs::lifecycle::HookContext;
+use bevy::ecs::world::DeferredWorld;
 use bevy::math::U8Vec3;
 use bevy::prelude::*;
 use bevy_auto_plugin::prelude::{AutoPlugin, auto_add_plugin};
@@ -22,7 +24,15 @@ pub struct ChunkPlugin;
 
 /// The realm-space position of a chunk, measured in chunks (32^3 voxels).
 #[derive(Component, Deref, Default, Debug, Eq, PartialEq, Clone, Copy)]
+#[require(Transform)]
+#[component(on_add = on_add_chunk_pos)]
 pub struct ChunkPos(pub IVec3);
+
+fn on_add_chunk_pos(mut world: DeferredWorld, ctx: HookContext) {
+    let mut target = world.entity_mut(ctx.entity);
+    let pos = target.get::<ChunkPos>().unwrap().0;
+    target.get_mut::<Transform>().unwrap().translation = (pos * 32).as_vec3();
+}
 
 /// A 32^3 piece of the realm's voxels.
 #[derive(Component, Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

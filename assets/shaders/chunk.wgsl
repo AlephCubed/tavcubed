@@ -1,10 +1,19 @@
 #import bevy_pbr::mesh_view_bindings::view
+#import bevy_pbr::mesh_functions::get_world_from_local
+#import bevy_pbr::mesh_bindings::mesh
+#import bevy_render::bindless::{bindless_samplers_filtering, bindless_textures_2d_array}
 
-@group(#{MATERIAL_BIND_GROUP}) @binding(0) var<uniform> chunk_pos: vec3<i32>;
-@group(#{MATERIAL_BIND_GROUP}) @binding(0) var<uniform> _padding: i32;
+struct MaterialBindings {
+    texture: u32,
+    texture_sampler: u32,
+}
 
-@group(#{MATERIAL_BIND_GROUP}) @binding(1) var array_texture: texture_2d_array<f32>;
-@group(#{MATERIAL_BIND_GROUP}) @binding(2) var array_texture_sampler: sampler;
+#ifdef BINDLESS
+@group(#{MATERIAL_BIND_GROUP}) @binding(0) var<storage> materials: array<MaterialBindings>;
+#else // BINDLESS
+@group(#{MATERIAL_BIND_GROUP}) @binding(0) var texture: texture_2d_array<f32>;
+@group(#{MATERIAL_BIND_GROUP}) @binding(1) var texture_sampler: sampler;
+#endif // BINDLESS
 
 const PACKED_AXIS_SIZE: u32 = 5;
 const PACKED_AXIS_MASK: u32 = (1 << PACKED_AXIS_SIZE) - 1; // 0b11111
@@ -17,14 +26,16 @@ const PACKED_TEXTURE_MASK: u32 = (1 << PACKED_TEXTURE_SIZE) - 1; // 0xFFFF
 
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
-    @location(0) layer: u32,
-    @location(1) uv: vec2<f32>,
-    @location(2) brightness: f32,
+    @location(0) instance_index: u32,
+    @location(1) layer: u32,
+    @location(2) uv: vec2<f32>,
+    @location(3) brightness: f32,
 };
 
 @vertex
 fn vertex(
 	@location(0) packed_data: vec2<u32>,
+	@builtin(instance_index) instance_index: u32,
 	@builtin(vertex_index) global_vertex_index: u32
 ) -> VertexOutput {
 	let low = packed_data.x;
@@ -49,13 +60,16 @@ fn vertex(
 	let right = f32(vertex_index == 1u || vertex_index == 2u);
 	let up    = f32(vertex_index >= 2u);
 
-    let vertex_offset = get_face(facing, voxel_offset, scale, up, right);
-    let vertex_pos = vertex_offset + vec3<f32>(chunk_pos) * 32;
+    let vertex_pos = get_face(facing, voxel_offset, scale, up, right);
 	
 	
 	
 	var out: VertexOutput;
-	out.position = view.clip_from_world * vec4(vertex_pos, 1.0);
+	out.instance_index = instance_index;
+	
+	let world_pos = get_world_from_local(instance_index) * vec4(vertex_pos, 1.0);
+	out.position = view.clip_from_world * world_pos;
+	
 	out.layer = texture;
 	out.uv = vec2(right * scale.x, up * scale.y);
 	
@@ -142,5 +156,15 @@ fn get_face(facing: u32, voxel_pos: vec3<f32>, scale: vec2<f32>, up: f32, right:
 
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
-    return textureSample(array_texture, array_texture_sampler, in.uv, in.layer) * in.brightness;
+#ifdef BINDLESS
+    let slot = mesh[in.instance_index].material_and_lightmap_bind_group_slot & 0xffffu;
+    return textureSample(
+        bindless_textures_2d_array[materials[slot].texture],
+        bindless_samplers_filtering[materials[slot].texture_sampler],
+        in.uv,
+        in.layer,
+    ) * in.brightness;
+#else // BINDLESS
+    return textureSample(texture, texture_sampler, in.uv, in.layer) * in.brightness;
+#endif // BINDLESS
 }

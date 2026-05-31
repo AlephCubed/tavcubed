@@ -20,26 +20,15 @@ impl Plugin for ChunkMaterialPlugin {
 }
 
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
+#[bindless]
 pub struct ChunkMaterial {
-    #[uniform(0)]
-    pub chunk_pos: IVec3,
-    #[uniform(0)]
-    _padding: i32,
-    #[texture(1, dimension = "2d_array")]
-    #[sampler(2)]
+    #[texture(0, dimension = "2d_array")]
+    #[sampler(1)]
     pub texture_array: Handle<Image>,
 }
 
 impl ChunkMaterial {
     const SHADER_ASSET_PATH: &str = "shaders/chunk.wgsl";
-
-    pub fn new(chunk_pos: IVec3, texture_array: Handle<Image>) -> Self {
-        ChunkMaterial {
-            chunk_pos,
-            _padding: 0,
-            texture_array,
-        }
-    }
 }
 
 impl Material for ChunkMaterial {
