@@ -1,130 +1,17 @@
-use crate::player::{PlayerChunk, PlayerChunkChanged};
-use crate::realm::chunk::{Chunk, ChunkPlugin, ChunkPos};
+use crate::player::PlayerChunkChanged;
+use crate::realm::chunk::mesh::ChunkLOD;
+use crate::realm::chunk::{Chunk, ChunkPlugin, ChunkPos, OCTREE_DEPTH};
 use crate::realm::generation::GenerateChunk;
-use bevy::math::U8Vec3;
 use bevy::prelude::*;
 use bevy_auto_plugin::prelude::{auto_observer, auto_resource};
-use std::fmt::Formatter;
-use std::ops::{Index, IndexMut};
-
-pub const RADIUS: i32 = 16;
-pub const DIAMETER: i32 = RADIUS * 2;
-pub const BUFFER_DIAMETER: usize = DIAMETER as usize + 1;
-
-pub const BUFFER_SIZE: usize = BUFFER_DIAMETER * BUFFER_DIAMETER * BUFFER_DIAMETER;
-pub const STRIDE_X: usize = 1;
-pub const STRIDE_Y: usize = BUFFER_DIAMETER;
-pub const STRIDE_Z: usize = BUFFER_DIAMETER * BUFFER_DIAMETER;
-
-pub type ChunkBuffer = [ChunkRef; BUFFER_SIZE];
-pub type IntoIter = std::array::IntoIter<ChunkRef, BUFFER_SIZE>;
-pub type Iter<'a> = core::slice::Iter<'a, ChunkRef>;
-pub type IterMut<'a> = core::slice::IterMut<'a, ChunkRef>;
+use itertools::iproduct;
+use std::collections::HashMap;
 
 /// Stores a grid of chunks around the [player's chunk](PlayerChunk).
-#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Resource, Deref, DerefMut, Default, Debug, Clone, PartialEq, Eq)]
 #[auto_resource(plugin = ChunkPlugin, init)]
 pub struct LoadedChunks {
-    buffer: ChunkBuffer,
-    /// The position in chunk-space of the center of the loaded area.
-    chunk_center: IVec3,
-    /// The index in buffer-space of the center of the loaded area.
-    buffer_center: usize,
-}
-
-impl LoadedChunks {
-    /// Converts a buffer index to an absolute position.
-    #[inline]
-    fn index_to_abs_pos(mut index: usize) -> U8Vec3 {
-        index %= BUFFER_SIZE;
-        U8Vec3 {
-            x: (index % STRIDE_Y) as u8,
-            y: ((index / STRIDE_Y) % STRIDE_Y) as u8,
-            z: (index / STRIDE_Z) as u8,
-        }
-    }
-
-    /// Converts a buffer position to an absolute index.
-    #[inline]
-    fn pos_to_abs_index(pos: IVec3) -> usize {
-        let x = pos.x.rem_euclid(BUFFER_DIAMETER as i32) as usize * STRIDE_X;
-        let y = pos.y.rem_euclid(BUFFER_DIAMETER as i32) as usize * STRIDE_Y;
-        let z = pos.z.rem_euclid(BUFFER_DIAMETER as i32) as usize * STRIDE_Z;
-        z + y + x
-    }
-
-    pub fn iter(&'_ self) -> Iter<'_> {
-        self.buffer.iter()
-    }
-
-    pub fn iter_mut(&'_ mut self) -> IterMut<'_> {
-        self.buffer.iter_mut()
-    }
-}
-
-impl Default for LoadedChunks {
-    fn default() -> Self {
-        Self {
-            buffer: [ChunkRef::default(); BUFFER_SIZE],
-            chunk_center: IVec3::default(),
-            buffer_center: 0,
-        }
-    }
-}
-
-impl Index<usize> for LoadedChunks {
-    type Output = ChunkRef;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.buffer[index % BUFFER_DIAMETER]
-    }
-}
-
-impl IndexMut<usize> for LoadedChunks {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.buffer[index % BUFFER_SIZE]
-    }
-}
-
-impl Index<IVec3> for LoadedChunks {
-    type Output = ChunkRef;
-
-    fn index(&self, pos: IVec3) -> &Self::Output {
-        &self.buffer[Self::pos_to_abs_index(pos)]
-    }
-}
-
-impl IndexMut<IVec3> for LoadedChunks {
-    fn index_mut(&mut self, pos: IVec3) -> &mut Self::Output {
-        &mut self.buffer[Self::pos_to_abs_index(pos)]
-    }
-}
-
-impl IntoIterator for LoadedChunks {
-    type Item = ChunkRef;
-    type IntoIter = IntoIter;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.buffer.into_iter()
-    }
-}
-
-impl std::fmt::Display for LoadedChunks {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        for y in 0..BUFFER_DIAMETER {
-            writeln!(f, "y: {y}")?;
-            for x in 0..BUFFER_DIAMETER {
-                write!(f, "\t")?;
-                for z in 0..BUFFER_DIAMETER {
-                    write!(f, "{}", self[ivec3(x as i32, y as i32, z as i32)])?;
-                }
-                writeln!(f)?;
-            }
-            writeln!(f)?;
-        }
-
-        Ok(())
-    }
+    pub chunks: HashMap<IVec3, ChunkRef>,
 }
 
 /// The current state of a chunk in the loadable area.
@@ -134,75 +21,109 @@ pub enum ChunkRef {
     #[default]
     None,
     /// [`GenerateChunk`] has been called for the given chunk.
-    Generating,
+    Generating { lod: u8 },
     /// The chunk was generated, but was empty.
     /// To save memory, the [chunk component](Chunk) may not be present on the entity.
     Empty(Entity),
     /// The chunk is generated at the given entity.
-    Some(Entity),
+    Some { entity: Entity, lod: u8 },
 }
 
-impl From<Option<Entity>> for ChunkRef {
-    fn from(value: Option<Entity>) -> Self {
-        match value {
-            None => Self::None,
-            Some(entity) => Self::Some(entity),
-        }
-    }
-}
-
-impl From<ChunkRef> for Option<Entity> {
-    fn from(value: ChunkRef) -> Self {
-        match value {
-            ChunkRef::None | ChunkRef::Generating => None,
-            ChunkRef::Empty(entity) | ChunkRef::Some(entity) => Some(entity),
-        }
-    }
-}
-
-impl std::fmt::Display for ChunkRef {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+impl ChunkRef {
+    pub fn get_entity(&self) -> Option<Entity> {
         match self {
-            ChunkRef::None => write!(f, "o"),
-            ChunkRef::Generating => write!(f, "-"),
-            ChunkRef::Empty(_) => write!(f, "."),
-            ChunkRef::Some(_) => write!(f, "#"),
+            ChunkRef::None | ChunkRef::Generating { .. } => None,
+            ChunkRef::Empty(entity) | ChunkRef::Some { entity, .. } => Some(*entity),
         }
     }
 }
 
+#[derive(Resource, Deref, DerefMut, Debug, Clone, PartialEq, Eq)]
+#[auto_resource(plugin = ChunkPlugin, init)]
+pub struct ChunkLodConfig {
+    shells: [LodShell; OCTREE_DEPTH + 2],
+}
+
+impl ChunkLodConfig {
+    pub fn new(shells: [LodShell; OCTREE_DEPTH + 2]) -> Self {
+        for (i, pair) in shells.windows(2).enumerate() {
+            assert!(
+                pair[0].unload_radius < pair[1].load_radius,
+                "LOD shell {} unload radius ({}) must be less than shell {} load radius ({})",
+                i,
+                pair[0].unload_radius,
+                i + 1,
+                pair[1].load_radius,
+            );
+            assert!(
+                pair[0].load_radius <= pair[0].unload_radius,
+                "LOD shell {i} load radius must be <= its unload radius",
+            );
+        }
+
+        Self { shells }
+    }
+
+    /// Returns the desired LOD for a chunk at the given offset, or None if it should be unloaded entirely.
+    pub fn desired_lod(&self, offset: IVec3) -> Option<u8> {
+        let d2 = offset.dot(offset) as u16;
+
+        self.shells
+            .iter()
+            .enumerate()
+            .find(|(_, shell)| d2 <= shell.load_radius * shell.load_radius)
+            .map(|(i, _)| (OCTREE_DEPTH + 1 - i) as u8)
+    }
+
+    /// Returns true if a chunk at the given offset should be unloaded.
+    pub fn should_unload(&self, offset: IVec3) -> bool {
+        let d2 = offset.dot(offset) as u16;
+
+        self.shells
+            .last()
+            .map(|s| d2 > s.load_radius * s.load_radius)
+            .unwrap_or_default()
+    }
+
+    pub fn iter_load_offsets(&self) -> impl Iterator<Item = IVec3> {
+        let max = self.shells.last().unwrap().load_radius as i32;
+
+        iproduct!(-max..max, -max..max, -max..max).map(|(x, y, z)| ivec3(x, y, z))
+    }
+}
+
+impl Default for ChunkLodConfig {
+    fn default() -> Self {
+        Self::new([
+            LodShell::new(4, 5),
+            LodShell::new(8, 10),
+            LodShell::new(12, 14),
+            LodShell::new(16, 18),
+            LodShell::new(20, 22),
+            LodShell::new(24, 26),
+        ])
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LodShell {
+    pub load_radius: u16,
+    pub unload_radius: u16,
+}
+
+impl LodShell {
+    pub fn new(load_radius: u16, unload_radius: u16) -> Self {
+        Self {
+            load_radius,
+            unload_radius,
+        }
+    }
+}
+
+// Todo Reimplement.
 /// Regenerates all loaded chunks.
 #[derive(Event, Default, Clone, Copy)]
 pub struct ReloadChunks;
-
-/// Generates all chunks in a radius around the player.
-#[auto_observer(plugin = ChunkPlugin)]
-fn reload_chunks(
-    _event: On<ReloadChunks>,
-    mut commands: Commands,
-    player_chunk: Res<PlayerChunk>,
-    mut loaded_chunks: ResMut<LoadedChunks>,
-    mut messages: MessageWriter<GenerateChunk>,
-) {
-    info!("Reloading chunks");
-
-    for x in -RADIUS..=RADIUS {
-        for y in -RADIUS..=RADIUS {
-            for z in -RADIUS..=RADIUS {
-                let pos = player_chunk.pos + ivec3(x, y, z);
-
-                match loaded_chunks[pos] {
-                    ChunkRef::None => {}
-                    ChunkRef::Generating => continue,
-                    ChunkRef::Empty(e) | ChunkRef::Some(e) => commands.entity(e).despawn(),
-                }
-
-                loaded_chunks[pos] = ChunkRef::Generating;
-                messages.write(GenerateChunk::new(pos));
-            }
-        }
-    }
-}
 
 /// Generates all new chunks when the player moves between chunk-borders.
 #[auto_observer(plugin = ChunkPlugin)]
@@ -210,37 +131,47 @@ fn generate_nearby_chunks(
     event: On<PlayerChunkChanged>,
     mut commands: Commands,
     mut loaded_chunks: ResMut<LoadedChunks>,
+    lod_config: Res<ChunkLodConfig>,
     mut messages: MessageWriter<GenerateChunk>,
+    mut chunk_lods: Query<&mut ChunkLOD>,
 ) {
-    let diff = event.new_chunk - event.old_chunk;
-    let new = event.new_chunk;
+    let center = event.new_chunk;
 
-    for axis in 0..3 {
-        let delta = diff[axis];
-        if delta == 0 {
-            continue;
+    // Unload
+    loaded_chunks.chunks.retain(|&pos, chunk_ref| {
+        if !lod_config.should_unload(pos - center) {
+            return true;
         }
 
-        let slab_coord = new[axis] + delta.signum() * RADIUS;
+        if let ChunkRef::Empty(entity) | ChunkRef::Some { entity, .. } = *chunk_ref {
+            commands.entity(entity).despawn();
+        }
 
-        for a in -RADIUS..=RADIUS {
-            for b in -RADIUS..=RADIUS {
-                let pos = match axis {
-                    0 => IVec3::new(slab_coord, new.y + a, new.z + b),
-                    1 => IVec3::new(new.x + a, slab_coord, new.z + b),
-                    2 => IVec3::new(new.x + a, new.y + b, slab_coord),
-                    _ => unreachable!(),
-                };
+        false
+    });
 
-                match loaded_chunks[pos] {
-                    ChunkRef::None => {}
-                    ChunkRef::Generating => continue,
-                    ChunkRef::Empty(e) | ChunkRef::Some(e) => commands.entity(e).despawn(),
-                }
+    // Load / Change LOD
+    for offset in lod_config.iter_load_offsets() {
+        let Some(desired_lod) = lod_config.desired_lod(offset) else {
+            continue;
+        };
 
-                loaded_chunks[pos] = ChunkRef::Generating;
-                messages.write(GenerateChunk::new(pos));
-            }
+        let position = center + offset;
+
+        // Load
+        let chunk = loaded_chunks.chunks.entry(position).or_insert_with(|| {
+            messages.write(GenerateChunk {
+                position,
+                lod: desired_lod,
+            });
+            ChunkRef::Generating { lod: desired_lod }
+        });
+
+        // Change LOD
+        if let ChunkRef::Some { entity, lod } = *chunk
+            && lod != desired_lod
+        {
+            chunk_lods.get_mut(entity).unwrap().set(desired_lod);
         }
     }
 }
@@ -248,103 +179,31 @@ fn generate_nearby_chunks(
 #[auto_observer(plugin = ChunkPlugin)]
 fn on_add_chunk(
     event: On<Add, (ChunkPos, Chunk)>,
+    mut commands: Commands,
     mut loaded_chunks: ResMut<LoadedChunks>,
-    chunks: Query<(&ChunkPos, Has<Chunk>)>,
+    chunks: Query<(&ChunkPos, Has<Chunk>, Option<&ChunkLOD>)>,
 ) {
-    let Ok((pos, chunk)) = chunks.get(event.entity) else {
+    let Ok((pos, chunk, lod)) = chunks.get(event.entity) else {
         return;
     };
 
+    let Some(reference) = loaded_chunks.chunks.get_mut(&pos.0) else {
+        return;
+    };
+
+    // Remove existing.
+    if let Some(entity) = reference.get_entity() {
+        // Todo decide on collision.
+        commands.entity(entity).despawn();
+    }
+
     match chunk {
-        true => loaded_chunks[pos.0] = ChunkRef::Some(event.entity),
-        false => loaded_chunks[pos.0] = ChunkRef::Empty(event.entity),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    const MIN: i32 = -10;
-    const MAX: i32 = 10;
-
-    #[test]
-    fn index_to_abs_pos_x() {
-        for x in 0..DIAMETER {
-            assert_eq!(
-                LoadedChunks::index_to_abs_pos(x as usize),
-                U8Vec3::new(x as u8, 0, 0)
-            );
+        true => {
+            *reference = ChunkRef::Some {
+                entity: event.entity,
+                lod: lod.cloned().unwrap_or_default().get(),
+            }
         }
-    }
-
-    #[test]
-    fn pos_to_abs_index_x() {
-        for x in MIN..MAX {
-            assert_eq!(
-                LoadedChunks::pos_to_abs_index(IVec3::new(x, 0, 0)),
-                x.rem_euclid(STRIDE_Y as i32) as usize,
-            );
-        }
-    }
-
-    #[test]
-    fn index_to_abs_pos_y() {
-        for y in 0..DIAMETER {
-            assert_eq!(
-                LoadedChunks::index_to_abs_pos(y as usize * STRIDE_Y),
-                U8Vec3::new(0, y as u8, 0)
-            );
-        }
-    }
-
-    #[test]
-    fn pos_to_abs_index_y() {
-        for y in MIN..MAX {
-            assert_eq!(
-                LoadedChunks::pos_to_abs_index(IVec3::new(0, y, 0)),
-                (y * STRIDE_Y as i32).rem_euclid(STRIDE_Z as i32) as usize,
-            );
-        }
-    }
-
-    #[test]
-    fn index_to_abs_pos_z() {
-        for z in 0..DIAMETER {
-            assert_eq!(
-                LoadedChunks::index_to_abs_pos(z as usize * STRIDE_Z),
-                U8Vec3::new(0, 0, z as u8)
-            );
-        }
-    }
-
-    #[test]
-    fn pos_to_abs_index_z() {
-        for z in MIN..MAX {
-            assert_eq!(
-                LoadedChunks::pos_to_abs_index(IVec3::new(0, 0, z)),
-                (z * STRIDE_Z as i32).rem_euclid(BUFFER_SIZE as i32) as usize,
-            );
-        }
-    }
-
-    #[test]
-    fn index_to_abs_pos_max() {
-        assert_eq!(
-            LoadedChunks::index_to_abs_pos(BUFFER_SIZE - 1),
-            U8Vec3::new(
-                BUFFER_DIAMETER as u8 - 1,
-                BUFFER_DIAMETER as u8 - 1,
-                BUFFER_DIAMETER as u8 - 1,
-            )
-        );
-    }
-
-    #[test]
-    fn index_to_abs_pos_wrap() {
-        assert_eq!(
-            LoadedChunks::index_to_abs_pos(BUFFER_SIZE),
-            U8Vec3::new(0, 0, 0)
-        );
+        false => *reference = ChunkRef::Empty(event.entity),
     }
 }

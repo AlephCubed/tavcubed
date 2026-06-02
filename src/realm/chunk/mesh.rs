@@ -34,18 +34,18 @@ impl ChunkMesh {
 /// Ranges from five (full detail) to zero (single cube).
 #[doc(alias = "ChunkLevelOfDetail")]
 #[derive(Component, Deref, Debug, Eq, PartialEq, Clone, Copy)]
-pub struct ChunkLOD(usize);
+pub struct ChunkLOD(u8);
 
 impl Default for ChunkLOD {
     fn default() -> Self {
-        Self(OCTREE_DEPTH + 1)
+        Self((OCTREE_DEPTH + 1) as u8)
     }
 }
 
 impl ChunkLOD {
-    pub fn new(lod: usize) -> Self {
+    pub fn new(lod: u8) -> Self {
         assert!(
-            lod <= OCTREE_DEPTH + 1,
+            lod <= (OCTREE_DEPTH + 1) as u8,
             "LOD must be less than or equal to {}, got {}",
             OCTREE_DEPTH + 1,
             lod
@@ -53,9 +53,9 @@ impl ChunkLOD {
         Self(lod)
     }
 
-    pub fn set(&mut self, lod: usize) {
+    pub fn set(&mut self, lod: u8) {
         assert!(
-            lod <= OCTREE_DEPTH + 1,
+            lod <= (OCTREE_DEPTH + 1) as u8,
             "LOD must be less than or equal to {}, got {}",
             OCTREE_DEPTH + 1,
             lod
@@ -63,7 +63,7 @@ impl ChunkLOD {
         self.0 = lod;
     }
 
-    pub fn get(&self) -> usize {
+    pub fn get(&self) -> u8 {
         self.0
     }
 }
@@ -124,7 +124,7 @@ pub fn mesh_chunk(chunk: Chunk, lod: ChunkLOD, registry: &BlockRegistryInner) ->
     let mut indices = Vec::with_capacity(face_estimate * INDICES_PER_FACE);
     let mut packed: Vec<[u32; 2]> = Vec::with_capacity(face_estimate * VERTICES_PER_FACE);
 
-    for group in chunk.iter_depth(lod.0) {
+    for group in chunk.iter_depth(lod.0 as usize) {
         if group.voxel().is_none() {
             continue;
         }

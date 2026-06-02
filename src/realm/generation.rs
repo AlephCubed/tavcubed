@@ -1,4 +1,5 @@
 use crate::realm::block::data::registry::BlockRegistry;
+use crate::realm::chunk::mesh::ChunkLOD;
 use crate::realm::chunk::{Chunk, ChunkPlugin, ChunkPos, Voxel, VoxelGrid};
 use bevy::math::u8vec3;
 use bevy::prelude::*;
@@ -13,12 +14,7 @@ use noiz::prelude::*;
 #[auto_message(plugin = ChunkPlugin)]
 pub struct GenerateChunk {
     pub position: IVec3,
-}
-
-impl GenerateChunk {
-    pub fn new(position: IVec3) -> GenerateChunk {
-        GenerateChunk { position }
-    }
+    pub lod: u8,
 }
 
 const RESOLUTION: f32 = 16.0;
@@ -42,8 +38,9 @@ impl Default for ChunkGenerationChannel {
 
 /// A message to send down the [`ChunkGenerationChannel`].
 struct ChunkGenerationFinished {
-    pos: IVec3,
+    position: IVec3,
     chunk: Option<Chunk>,
+    lod: u8,
 }
 
 /// Basic perlin noise heightmap.
@@ -60,8 +57,9 @@ fn generate_perlin_chunk(
 
         if message.position.y != 0 {
             _ = sender.send(ChunkGenerationFinished {
-                pos: message.position,
+                position: message.position,
                 chunk: None,
+                lod: message.lod,
             });
             continue;
         }
@@ -99,8 +97,9 @@ fn generate_perlin_chunk(
             }
 
             _ = sender.send(ChunkGenerationFinished {
-                pos: message.position,
+                position: message.position,
                 chunk: Some(Chunk::new(voxel_grid)),
+                lod: message.lod,
             });
         })
         .detach();
@@ -111,8 +110,12 @@ fn generate_perlin_chunk(
 fn generation_finished(mut commands: Commands, channel: Res<ChunkGenerationChannel>) {
     for message in channel.receiver.try_iter() {
         match message.chunk {
-            None => commands.spawn(ChunkPos(message.pos)),
-            Some(chunk) => commands.spawn((ChunkPos(message.pos), chunk)),
+            None => commands.spawn(ChunkPos(message.position)),
+            Some(chunk) => commands.spawn((
+                ChunkPos(message.position),
+                chunk,
+                ChunkLOD::new(message.lod),
+            )),
         };
     }
 }

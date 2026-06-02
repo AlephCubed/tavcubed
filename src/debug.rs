@@ -43,8 +43,8 @@ fn debug_keybinds(
             // Change all chunk's LOD.
             if keyboard_input.pressed(KeyCode::SuperLeft) {
                 for mut lod in &mut lods {
-                    if lod.get() != index {
-                        lod.set(index)
+                    if lod.get() != index as u8 {
+                        lod.set(index as u8)
                     }
                 }
                 info!("Changed LOD to {index}");
